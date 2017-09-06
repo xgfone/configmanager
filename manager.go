@@ -240,21 +240,40 @@ func (c *ConfigManager) Value(name string) interface{} {
 	return c.config[name]
 }
 
+func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error) {
+	if !c.parsed {
+		return nil, ErrNotParsed
+	}
+
+	opt := c.Value(name)
+	if opt == nil {
+		return nil, fmt.Errorf("no option '%s'", name)
+	}
+
+	switch _type {
+	case stringType:
+		if v, ok := opt.(string); ok {
+			return v, nil
+		}
+	case intType:
+		if v, ok := opt.(int); ok {
+			return v, nil
+		}
+	default:
+		return nil, fmt.Errorf("don't support the type %s", _type)
+	}
+	return nil, fmt.Errorf("the type of the option '%s' is not %s", name, _type)
+}
+
 // StringE returns the option value, the type of which is string.
 //
 // Return an error if no the option or the type of the option isn't string.
 func (c *ConfigManager) StringE(name string) (string, error) {
-	if !c.parsed {
-		return "", ErrNotParsed
+	v, err := c.getValue(name, stringType)
+	if err != nil {
+		return "", err
 	}
-
-	if opt := c.Value(name); opt != nil {
-		if v, ok := opt.(string); ok {
-			return v, nil
-		}
-		return "", fmt.Errorf("the type of the option '%s' is not string", name)
-	}
-	return "", fmt.Errorf("no option '%s'", name)
+	return v.(string), nil
 }
 
 // StringD is the same as StringE, but returns the default if there is an error.
@@ -278,17 +297,11 @@ func (c *ConfigManager) String(name string) string {
 //
 // Return an error if no the option or the type of the option isn't int.
 func (c *ConfigManager) IntE(name string) (int, error) {
-	if !c.parsed {
-		return 0, ErrNotParsed
+	v, err := c.getValue(name, intType)
+	if err != nil {
+		return 0, err
 	}
-
-	if opt := c.Value(name); opt != nil {
-		if v, ok := opt.(int); ok {
-			return v, nil
-		}
-		return 0, fmt.Errorf("the type of the option '%s' is not int", name)
-	}
-	return 0, fmt.Errorf("no option '%s'", name)
+	return v.(int), nil
 }
 
 // IntD is the same as IntE, but returns the default if there is an error.
