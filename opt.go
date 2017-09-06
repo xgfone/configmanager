@@ -219,3 +219,19 @@ func NewUint32Opt(short, name string, _default interface{}, required bool, help 
 func NewUint64Opt(short, name string, _default interface{}, required bool, help string) Opt {
 	return newBaseOpt(short, name, _default, required, help, uint64Type)
 }
+
+// NewFloat32Opt return a new float32 option.
+//
+// Notice: the type of the default value must be float32 or nil.
+// If no default, it's nil.
+func NewFloat32Opt(short, name string, _default interface{}, required bool, help string) Opt {
+	return newBaseOpt(short, name, _default, required, help, float32Type)
+}
+
+// NewFloat64Opt return a new float64 option.
+//
+// Notice: the type of the default value must be float64 or nil.
+// If no default, it's nil.
+func NewFloat64Opt(short, name string, _default interface{}, required bool, help string) Opt {
+	return newBaseOpt(short, name, _default, required, help, float64Type)
+}

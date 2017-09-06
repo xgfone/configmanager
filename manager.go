@@ -572,3 +572,59 @@ func (c *ConfigManager) Uint64(name string) uint64 {
 	}
 	return value
 }
+
+// Float32E returns the option value, the type of which is float32.
+//
+// Return an error if no the option or the type of the option isn't float32.
+func (c *ConfigManager) Float32E(name string) (float32, error) {
+	v, err := c.getValue(name, float32Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(float32), nil
+}
+
+// Float32D is the same as Float32E, but returns the default if there is an error.
+func (c *ConfigManager) Float32D(name string, _default float32) float32 {
+	if value, err := c.Float32E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Float32 is the same as Float32E, but panic if there is an error.
+func (c *ConfigManager) Float32(name string) float32 {
+	value, err := c.Float32E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Float64E returns the option value, the type of which is float64.
+//
+// Return an error if no the option or the type of the option isn't float64.
+func (c *ConfigManager) Float64E(name string) (float64, error) {
+	v, err := c.getValue(name, float64Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(float64), nil
+}
+
+// Float64D is the same as Float64E, but returns the default if there is an error.
+func (c *ConfigManager) Float64D(name string, _default float64) float64 {
+	if value, err := c.Float64E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Float64 is the same as Float64E, but panic if there is an error.
+func (c *ConfigManager) Float64(name string) float64 {
+	value, err := c.Float64E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
