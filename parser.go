@@ -10,16 +10,60 @@ import (
 
 // Parser is an parser interface.
 type Parser interface {
+	// Name returns the name of the parser to identify a parser.
 	Name() string
+
+	// If the parser needs some configurations, it can return all those names
+	// by the method, and mark whether they are required.
+	//
+	// For example, the method returns {"ip": true, "port": false},
+	// which indicates the configuration manager must pass the parser the value
+	// of the option 'ip' when calling the method Parse, but the value of 'port'
+	// is optional.
 	GetKeys() map[string]bool
+
+	// Register the options to the parser.
+	//
+	// The parser should only parse the value of the registered option and use
+	// the method GetName() or GetShort().
 	Register([]Opt)
+
+	// Parse the value of the registered options.
+	//
+	// The arguments is the metadata in order to parse the options. For example,
+	// for the redis parser, it's the connection information to connect to the
+	// redis server; for the configuration file parser, it's the directory or
+	// path of the configuration file, such as `config_file` in the property
+	// file parser `NewSimplePropertyParser`.
+	//
+	// The result is the key-value pairs, which the key is the name of the
+	// registered option.
+	//
+	// If a certain option has no value, the parser should not return a default
+	// one.
 	Parse(map[string]string) (map[string]string, error)
 }
 
 // CliParser is an interface to parse the CLI arguments.
 type CliParser interface {
+	// Name returns the name of the CLI parser to identify a CLI parser.
 	Name() string
+
+	// Register the options to the CLI parser.
+	//
+	// The parser should only parse the value of the registered option and use
+	// the method GetName() or GetShort().
 	Register([]Opt)
+
+	// Parse the value of the registered CLI options.
+	//
+	// The arguments is the CLI arguments, but it may be nil.
+	//
+	// The result is the key-value pairs, which the key is the name of the
+	// registered option.
+	//
+	// If a certain option has no value, the CLI parser should not return a
+	// default one.
 	Parse([]string) (map[string]string, []string, error)
 }
 
