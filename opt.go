@@ -111,25 +111,76 @@ func (o baseOpt) GetDefault() interface{} {
 		return o.Default.(string)
 	case intType:
 		return o.Default.(int)
+	case int8Type:
+		return o.Default.(int8)
+	case int16Type:
+		return o.Default.(int16)
+	case int32Type:
+		return o.Default.(int32)
+	case int64Type:
+		return o.Default.(int64)
+	case uintType:
+		return o.Default.(uint)
+	case uint8Type:
+		return o.Default.(uint8)
+	case uint16Type:
+		return o.Default.(uint16)
+	case uint32Type:
+		return o.Default.(uint32)
+	case uint64Type:
+		return o.Default.(uint64)
+	case float32Type:
+		return o.Default.(float32)
+	case float64Type:
+		return o.Default.(float64)
 	default:
 		panic(fmt.Errorf("don't support the type '%s'", o._type))
 	}
 }
 
 // Parse parses the value of the option to a certain type.
-func (o baseOpt) Parse(data string) (interface{}, error) {
+func (o baseOpt) Parse(data string) (v interface{}, err error) {
 	switch o._type {
 	case stringType:
 		return ToString(data)
-	case intType:
-		_v, err := ToInt64(data)
-		if err != nil {
-			return nil, err
-		}
-		return int(_v), nil
+	case intType, int8Type, int16Type, int32Type, int64Type:
+		v, err = ToInt64(data)
+	case uintType, uint8Type, uint16Type, uint32Type, uint64Type:
+		v, err = ToUint64(data)
+	case float32Type, float64Type:
+		v, err = ToFloat64(data)
 	default:
 		panic(fmt.Errorf("don't support the type '%s'", o._type))
 	}
+
+	if err != nil {
+		return
+	}
+
+	switch o._type {
+	// case uint64Type:
+	// case int64Type:
+	// case float64Type:
+	case intType:
+		v = int(v.(int64))
+	case int8Type:
+		v = int8(v.(int64))
+	case int16Type:
+		v = int16(v.(int64))
+	case int32Type:
+		v = int32(v.(int64))
+	case uintType:
+		v = uint(v.(uint64))
+	case uint8Type:
+		v = uint8(v.(uint64))
+	case uint16Type:
+		v = uint16(v.(uint64))
+	case uint32Type:
+		v = uint32(v.(uint64))
+	case float32Type:
+		v = float32(v.(float64))
+	}
+	return
 }
 
 // NewStrOpt return a new string option.

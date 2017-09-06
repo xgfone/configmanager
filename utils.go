@@ -52,8 +52,8 @@ func ToInt64(_v interface{}) (v int64, err error) {
 	return
 }
 
-// ToUInt64 does the best to convert a certain value to uint64.
-func ToUInt64(_v interface{}) (v uint64, err error) {
+// ToUint64 does the best to convert a certain value to uint64.
+func ToUint64(_v interface{}) (v uint64, err error) {
 	switch _v.(type) {
 	case complex64, complex128:
 		v = uint64(real(reflect.ValueOf(_v).Complex()))

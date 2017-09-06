@@ -259,6 +259,50 @@ func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error
 		if v, ok := opt.(int); ok {
 			return v, nil
 		}
+	case int8Type:
+		if v, ok := opt.(int8); ok {
+			return v, nil
+		}
+	case int16Type:
+		if v, ok := opt.(int16); ok {
+			return v, nil
+		}
+	case int32Type:
+		if v, ok := opt.(int32); ok {
+			return v, nil
+		}
+	case int64Type:
+		if v, ok := opt.(int64); ok {
+			return v, nil
+		}
+	case uintType:
+		if v, ok := opt.(uint); ok {
+			return v, nil
+		}
+	case uint8Type:
+		if v, ok := opt.(uint8); ok {
+			return v, nil
+		}
+	case uint16Type:
+		if v, ok := opt.(uint16); ok {
+			return v, nil
+		}
+	case uint32Type:
+		if v, ok := opt.(uint32); ok {
+			return v, nil
+		}
+	case uint64Type:
+		if v, ok := opt.(uint64); ok {
+			return v, nil
+		}
+	case float32Type:
+		if v, ok := opt.(float32); ok {
+			return v, nil
+		}
+	case float64Type:
+		if v, ok := opt.(float64); ok {
+			return v, nil
+		}
 	default:
 		return nil, fmt.Errorf("don't support the type %s", _type)
 	}
