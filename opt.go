@@ -97,6 +97,13 @@ func (o baseOpt) IsRequired() bool {
 	return o.Required
 }
 
+func (o baseOpt) IsBool() bool {
+	if o._type == boolType {
+		return true
+	}
+	return false
+}
+
 // GetHelp returns the help doc of the option.
 func (o baseOpt) GetHelp() string {
 	return o.Help

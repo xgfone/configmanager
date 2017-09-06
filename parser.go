@@ -84,7 +84,15 @@ func (f flagParser) Name() string {
 
 func (f flagParser) Register(opts []Opt) {
 	for _, opt := range opts {
-		f.flagSet.String(opt.GetName(), "", opt.GetHelp())
+		if opt.IsBool() {
+			var _default bool
+			if v := opt.GetDefault(); v != nil {
+				_default = v.(bool)
+			}
+			f.flagSet.Bool(opt.GetName(), _default, opt.GetHelp())
+		} else {
+			f.flagSet.String(opt.GetName(), "", opt.GetHelp())
+		}
 	}
 }
 

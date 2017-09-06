@@ -19,6 +19,7 @@ type Opt interface {
 	GetHelp() string
 	GetDefault() interface{}
 	IsRequired() bool
+	IsBool() bool
 	Parse(string) (interface{}, error)
 }
 
@@ -311,6 +312,34 @@ func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error
 		return nil, fmt.Errorf("don't support the type %s", _type)
 	}
 	return nil, fmt.Errorf("the type of the option '%s' is not %s", name, _type)
+}
+
+// BoolE returns the option value, the type of which is bool.
+//
+// Return an error if no the option or the type of the option isn't bool.
+func (c *ConfigManager) BoolE(name string) (bool, error) {
+	v, err := c.getValue(name, boolType)
+	if err != nil {
+		return false, err
+	}
+	return v.(bool), nil
+}
+
+// BoolD is the same as BoolE, but returns the default if there is an error.
+func (c *ConfigManager) BoolD(name string, _default bool) bool {
+	if value, err := c.BoolE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Bool is the same as BoolE, but panic if there is an error.
+func (c *ConfigManager) Bool(name string) bool {
+	value, err := c.BoolE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // StringE returns the option value, the type of which is string.
