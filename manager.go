@@ -381,7 +381,7 @@ func (c *ConfigManager) Int16(name string) int16 {
 //
 // Return an error if no the option or the type of the option isn't int32.
 func (c *ConfigManager) Int32E(name string) (int32, error) {
-	v, err := c.getValue(name, intType)
+	v, err := c.getValue(name, int32Type)
 	if err != nil {
 		return 0, err
 	}
@@ -409,7 +409,7 @@ func (c *ConfigManager) Int32(name string) int32 {
 //
 // Return an error if no the option or the type of the option isn't int64.
 func (c *ConfigManager) Int64E(name string) (int64, error) {
-	v, err := c.getValue(name, intType)
+	v, err := c.getValue(name, int64Type)
 	if err != nil {
 		return 0, err
 	}
@@ -427,6 +427,146 @@ func (c *ConfigManager) Int64D(name string, _default int64) int64 {
 // Int64 is the same as Int64E, but panic if there is an error.
 func (c *ConfigManager) Int64(name string) int64 {
 	value, err := c.Int64E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// UintE returns the option value, the type of which is uint.
+//
+// Return an error if no the option or the type of the option isn't uint.
+func (c *ConfigManager) UintE(name string) (uint, error) {
+	v, err := c.getValue(name, uintType)
+	if err != nil {
+		return 0, err
+	}
+	return v.(uint), nil
+}
+
+// UintD is the same as UintE, but returns the default if there is an error.
+func (c *ConfigManager) UintD(name string, _default uint) uint {
+	if value, err := c.UintE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Uint is the same as UintE, but panic if there is an error.
+func (c *ConfigManager) Uint(name string) uint {
+	value, err := c.UintE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Uint8E returns the option value, the type of which is uint8.
+//
+// Return an error if no the option or the type of the option isn't uint8.
+func (c *ConfigManager) Uint8E(name string) (uint8, error) {
+	v, err := c.getValue(name, uint8Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(uint8), nil
+}
+
+// Uint8D is the same as Uint8E, but returns the default if there is an error.
+func (c *ConfigManager) Uint8D(name string, _default uint8) uint8 {
+	if value, err := c.Uint8E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Uint8 is the same as Uint8E, but panic if there is an error.
+func (c *ConfigManager) Uint8(name string) uint8 {
+	value, err := c.Uint8E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Uint16E returns the option value, the type of which is uint16.
+//
+// Return an error if no the option or the type of the option isn't uint16.
+func (c *ConfigManager) Uint16E(name string) (uint16, error) {
+	v, err := c.getValue(name, uint16Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(uint16), nil
+}
+
+// Uint16D is the same as Uint16E, but returns the default if there is an error.
+func (c *ConfigManager) Uint16D(name string, _default uint16) uint16 {
+	if value, err := c.Uint16E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Uint16 is the same as Uint16E, but panic if there is an error.
+func (c *ConfigManager) Uint16(name string) uint16 {
+	value, err := c.Uint16E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Uint32E returns the option value, the type of which is uint32.
+//
+// Return an error if no the option or the type of the option isn't uint32.
+func (c *ConfigManager) Uint32E(name string) (uint32, error) {
+	v, err := c.getValue(name, uint32Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(uint32), nil
+}
+
+// Uint32D is the same as Uint32E, but returns the default if there is an error.
+func (c *ConfigManager) Uint32D(name string, _default uint32) uint32 {
+	if value, err := c.Uint32E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Uint32 is the same as Uint32E, but panic if there is an error.
+func (c *ConfigManager) Uint32(name string) uint32 {
+	value, err := c.Uint32E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Uint64E returns the option value, the type of which is uint64.
+//
+// Return an error if no the option or the type of the option isn't uint64.
+func (c *ConfigManager) Uint64E(name string) (uint64, error) {
+	v, err := c.getValue(name, uint64Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(uint64), nil
+}
+
+// Uint64D is the same as Uint64E, but returns the default if there is an error.
+func (c *ConfigManager) Uint64D(name string, _default uint64) uint64 {
+	if value, err := c.Uint64E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Uint64 is the same as Uint64E, but panic if there is an error.
+func (c *ConfigManager) Uint64(name string) uint64 {
+	value, err := c.Uint64E(name)
 	if err != nil {
 		panic(err)
 	}
