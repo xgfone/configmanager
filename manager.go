@@ -320,3 +320,31 @@ func (c *ConfigManager) Int(name string) int {
 	}
 	return value
 }
+
+// Int8E returns the option value, the type of which is int8.
+//
+// Return an error if no the option or the type of the option isn't int8.
+func (c *ConfigManager) Int8E(name string) (int8, error) {
+	v, err := c.getValue(name, int8Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(int8), nil
+}
+
+// Int8D is the same as Int8E, but returns the default if there is an error.
+func (c *ConfigManager) Int8D(name string, _default int8) int8 {
+	if value, err := c.Int8E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Int8 is the same as Int8E, but panic if there is an error.
+func (c *ConfigManager) Int8(name string) int8 {
+	value, err := c.Int8E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}

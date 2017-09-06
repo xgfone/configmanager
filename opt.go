@@ -159,3 +159,17 @@ var _ Opt = intOpt{}
 func NewIntOpt(short, name string, _default interface{}, required bool, help string) Opt {
 	return intOpt{newBaseOpt(short, name, _default, required, help, stringType)}
 }
+
+type int8Opt struct {
+	baseOpt
+}
+
+var _ Opt = int8Opt{}
+
+// NewInt8Opt return a new int option.
+//
+// Notice: the type of the default value must be int8 or nil.
+// If no default, it's nil.
+func NewInt8Opt(short, name string, _default interface{}, required bool, help string) Opt {
+	return intOpt{newBaseOpt(short, name, _default, required, help, int8Type)}
+}
