@@ -145,7 +145,7 @@ func NewStrOpt(short, name string, _default interface{}, required bool, help str
 // Notice: the type of the default value must be int or nil.
 // If no default, it's nil.
 func NewIntOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, stringType)
+	return newBaseOpt(short, name, _default, required, help, intType)
 }
 
 // NewInt8Opt return a new int8 option.
