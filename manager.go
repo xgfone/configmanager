@@ -376,3 +376,59 @@ func (c *ConfigManager) Int16(name string) int16 {
 	}
 	return value
 }
+
+// Int32E returns the option value, the type of which is int32.
+//
+// Return an error if no the option or the type of the option isn't int32.
+func (c *ConfigManager) Int32E(name string) (int32, error) {
+	v, err := c.getValue(name, intType)
+	if err != nil {
+		return 0, err
+	}
+	return v.(int32), nil
+}
+
+// Int32D is the same as Int32E, but returns the default if there is an error.
+func (c *ConfigManager) Int32D(name string, _default int32) int32 {
+	if value, err := c.Int32E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Int32 is the same as Int32E, but panic if there is an error.
+func (c *ConfigManager) Int32(name string) int32 {
+	value, err := c.Int32E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// Int64E returns the option value, the type of which is int64.
+//
+// Return an error if no the option or the type of the option isn't int64.
+func (c *ConfigManager) Int64E(name string) (int64, error) {
+	v, err := c.getValue(name, intType)
+	if err != nil {
+		return 0, err
+	}
+	return v.(int64), nil
+}
+
+// Int64D is the same as Int64E, but returns the default if there is an error.
+func (c *ConfigManager) Int64D(name string, _default int64) int64 {
+	if value, err := c.Int64E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Int64 is the same as Int64E, but panic if there is an error.
+func (c *ConfigManager) Int64(name string) int64 {
+	value, err := c.Int64E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}

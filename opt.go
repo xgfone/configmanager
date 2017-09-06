@@ -163,3 +163,19 @@ func NewInt8Opt(short, name string, _default interface{}, required bool, help st
 func NewInt16Opt(short, name string, _default interface{}, required bool, help string) Opt {
 	return newBaseOpt(short, name, _default, required, help, int16Type)
 }
+
+// NewInt32Opt return a new int32 option.
+//
+// Notice: the type of the default value must be int32 or nil.
+// If no default, it's nil.
+func NewInt32Opt(short, name string, _default interface{}, required bool, help string) Opt {
+	return newBaseOpt(short, name, _default, required, help, int32Type)
+}
+
+// NewInt64Opt return a new int64 option.
+//
+// Notice: the type of the default value must be int64 or nil.
+// If no default, it's nil.
+func NewInt64Opt(short, name string, _default interface{}, required bool, help string) Opt {
+	return newBaseOpt(short, name, _default, required, help, int64Type)
+}
