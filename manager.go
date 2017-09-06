@@ -86,9 +86,19 @@ func (c *ConfigManager) Parse(arguments []string) (err error) {
 				c.config[opt.GetName()] = v
 			} else if _default := opt.GetDefault(); _default != nil {
 				c.config[opt.GetName()] = _default
-			} else if opt.IsRequired() {
-				return fmt.Errorf("the option '%s' has no value", opt.GetName())
 			}
+		}
+	}
+
+	// Check whether some required options neither have the value nor the default value.
+	for _, opt := range c.cliopts {
+		if _, ok := c.config[opt.GetName()]; !ok && opt.IsRequired() {
+			return fmt.Errorf("the option '%s' is required, but has no value", opt.GetName())
+		}
+	}
+	for _, opt := range c.opts {
+		if _, ok := c.config[opt.GetName()]; !ok && opt.IsRequired() {
+			return fmt.Errorf("the option '%s' is required, but has no value", opt.GetName())
 		}
 	}
 
@@ -137,8 +147,6 @@ func (c *ConfigManager) parseCli(arguments []string) (err error) {
 			c.config[opt.GetName()] = v
 		} else if _default := opt.GetDefault(); _default != nil {
 			c.config[opt.GetName()] = _default
-		} else if opt.IsRequired() {
-			return fmt.Errorf("the option '%s' has no value", opt.GetName())
 		}
 	}
 
