@@ -64,6 +64,8 @@ type baseOpt struct {
 	_type optType
 }
 
+var _ Opt = baseOpt{}
+
 func newBaseOpt(short, name string, _default interface{}, required bool,
 	help string, optType optType) baseOpt {
 	o := baseOpt{
@@ -130,60 +132,34 @@ func (o baseOpt) Parse(data string) (interface{}, error) {
 	}
 }
 
-// strOpt is a string option
-type strOpt struct {
-	baseOpt
-}
-
-var _ Opt = strOpt{}
-
 // NewStrOpt return a new string option.
 //
 // Notice: the type of the default value must be string or nil.
 // If no default, it's nil.
 func NewStrOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return strOpt{newBaseOpt(short, name, _default, required, help, stringType)}
+	return newBaseOpt(short, name, _default, required, help, stringType)
 }
-
-// intOpt is a int option
-type intOpt struct {
-	baseOpt
-}
-
-var _ Opt = intOpt{}
 
 // NewIntOpt return a new int option.
 //
 // Notice: the type of the default value must be int or nil.
 // If no default, it's nil.
 func NewIntOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return intOpt{newBaseOpt(short, name, _default, required, help, stringType)}
+	return newBaseOpt(short, name, _default, required, help, stringType)
 }
-
-type int8Opt struct {
-	baseOpt
-}
-
-var _ Opt = int8Opt{}
 
 // NewInt8Opt return a new int8 option.
 //
 // Notice: the type of the default value must be int8 or nil.
 // If no default, it's nil.
 func NewInt8Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return intOpt{newBaseOpt(short, name, _default, required, help, int8Type)}
+	return newBaseOpt(short, name, _default, required, help, int8Type)
 }
-
-type int16Opt struct {
-	baseOpt
-}
-
-var _ Opt = int16Opt{}
 
 // NewInt16Opt return a new int16 option.
 //
 // Notice: the type of the default value must be int16 or nil.
 // If no default, it's nil.
 func NewInt16Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return int16Opt{newBaseOpt(short, name, _default, required, help, int16Type)}
+	return newBaseOpt(short, name, _default, required, help, int16Type)
 }
