@@ -348,3 +348,31 @@ func (c *ConfigManager) Int8(name string) int8 {
 	}
 	return value
 }
+
+// Int16E returns the option value, the type of which is int16.
+//
+// Return an error if no the option or the type of the option isn't int16.
+func (c *ConfigManager) Int16E(name string) (int16, error) {
+	v, err := c.getValue(name, int16Type)
+	if err != nil {
+		return 0, err
+	}
+	return v.(int16), nil
+}
+
+// Int16D is the same as Int16E, but returns the default if there is an error.
+func (c *ConfigManager) Int16D(name string, _default int16) int16 {
+	if value, err := c.Int16E(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Int16 is the same as Int16E, but panic if there is an error.
+func (c *ConfigManager) Int16(name string) int16 {
+	value, err := c.Int16E(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
