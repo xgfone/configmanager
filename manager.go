@@ -251,6 +251,10 @@ func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error
 	}
 
 	switch _type {
+	case boolType:
+		if v, ok := opt.(bool); ok {
+			return v, nil
+		}
 	case stringType:
 		if v, ok := opt.(string); ok {
 			return v, nil

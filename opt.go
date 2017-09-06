@@ -10,6 +10,7 @@ func (ot optType) String() string {
 
 const (
 	noneType optType = iota
+	boolType
 	stringType
 	intType
 	int8Type
@@ -33,6 +34,7 @@ const (
 
 var optTypeMap = map[optType]string{
 	noneType:    "none",
+	boolType:    "bool",
 	stringType:  "string",
 	intType:     "int",
 	int8Type:    "int8",
@@ -107,6 +109,8 @@ func (o baseOpt) GetDefault() interface{} {
 	}
 
 	switch o._type {
+	case boolType:
+		return o.Default.(bool)
 	case stringType:
 		return o.Default.(string)
 	case intType:
@@ -141,6 +145,8 @@ func (o baseOpt) GetDefault() interface{} {
 // Parse parses the value of the option to a certain type.
 func (o baseOpt) Parse(data string) (v interface{}, err error) {
 	switch o._type {
+	case boolType:
+		return ToBool(data)
 	case stringType:
 		return ToString(data)
 	case intType, int8Type, int16Type, int32Type, int64Type:
@@ -181,6 +187,14 @@ func (o baseOpt) Parse(data string) (v interface{}, err error) {
 		v = float32(v.(float64))
 	}
 	return
+}
+
+// NewBoolOpt return a new bool option.
+//
+// Notice: the type of the default value must be bool or nil.
+// If no default, it's nil.
+func NewBoolOpt(short, name string, _default interface{}, required bool, help string) Opt {
+	return newBaseOpt(short, name, _default, required, help, boolType)
 }
 
 // NewStrOpt return a new string option.

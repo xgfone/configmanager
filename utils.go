@@ -18,17 +18,32 @@ func IsZero(v interface{}) bool {
 	return !ok
 }
 
-// Bool2Int converts the bool to int64.
-func Bool2Int(b bool) int64 {
+// bool2Int converts the bool to int64.
+func bool2Int(b bool) int64 {
 	if b {
 		return 1
 	}
 	return 0
 }
 
-// Bool2Uint converts the bool to uint64.
-func Bool2Uint(b bool) uint64 {
-	return uint64(Bool2Int(b))
+// ToBool does the best to convert a certain value to bool
+//
+// For "t", "1", "true", "True", "TRUE", it's true.
+// For "f", "0", "false", "False", "FALSE", it's false.
+func ToBool(v interface{}) (bool, error) {
+	switch v.(type) {
+	case string:
+		_v := v.(string)
+		switch _v {
+		case "t", "1", "true", "True", "TRUE":
+			return true, nil
+		case "f", "0", "false", "False", "FALSE":
+			return false, nil
+		default:
+			return false, fmt.Errorf("unrecognized string when converting to bool: %s", _v)
+		}
+	}
+	return !IsZero(v), nil
 }
 
 // ToInt64 does the best to convert a certain value to int64.
@@ -37,7 +52,7 @@ func ToInt64(_v interface{}) (v int64, err error) {
 	case complex64, complex128:
 		v = int64(real(reflect.ValueOf(_v).Complex()))
 	case bool:
-		v = int64(Bool2Int(_v.(bool)))
+		v = int64(bool2Int(_v.(bool)))
 	case int, int8, int16, int32, int64:
 		v = reflect.ValueOf(_v).Int()
 	case uint, uint8, uint16, uint32, uint64:
@@ -58,7 +73,7 @@ func ToUint64(_v interface{}) (v uint64, err error) {
 	case complex64, complex128:
 		v = uint64(real(reflect.ValueOf(_v).Complex()))
 	case bool:
-		v = uint64(Bool2Int(_v.(bool)))
+		v = uint64(bool2Int(_v.(bool)))
 	case int, int8, int16, int32, int64:
 		v = reflect.ValueOf(_v).Uint()
 	case uint, uint8, uint16, uint32, uint64:
@@ -79,7 +94,7 @@ func ToFloat64(_v interface{}) (v float64, err error) {
 	case complex64, complex128:
 		v = float64(real(reflect.ValueOf(_v).Complex()))
 	case bool:
-		v = float64(Bool2Int(_v.(bool)))
+		v = float64(bool2Int(_v.(bool)))
 	case int, int8, int16, int32, int64:
 		v = float64(reflect.ValueOf(_v).Int())
 	case uint, uint8, uint16, uint32, uint64:
