@@ -26,6 +26,14 @@ type Opt interface {
 
 // Config is used to manage the configuration parsers.
 type Config struct {
+	// If true, it will check whether some options have neither the value
+	// nor the default value; or won't check. If the check result is yes,
+	// it will return an error.
+	//
+	// The default will check them, and you can set it to false to cancel it.
+	// But you must set it before calling the method Parse().
+	IsRequired bool
+
 	// Args is the rest of the CLI arguments, which are not the options,
 	// such as the option starting with the prefix "-" or "--".
 	Args []string
@@ -44,6 +52,7 @@ type Config struct {
 // The name of the default group is DEFAULT.
 func NewConfig(cli CliParser) *Config {
 	return &Config{
+		IsRequired:   true,
 		defaultGroup: "DEFAULT",
 
 		cli:     cli,
@@ -150,7 +159,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
-		if err = group.checkRequiredOption(); err != nil {
+		if err = group.checkRequiredOption(c.IsRequired); err != nil {
 			return err
 		}
 	}

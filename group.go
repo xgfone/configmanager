@@ -54,11 +54,15 @@ func (g OptGroup) setOptions(options map[string]string) error {
 }
 
 // Check whether some required options neither have the value nor the default value.
-func (g OptGroup) checkRequiredOption() error {
+func (g OptGroup) checkRequiredOption(required bool) error {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.GetDefault(); v != nil {
 				g.values[name] = v
+				continue
+			}
+
+			if !required {
 				continue
 			}
 

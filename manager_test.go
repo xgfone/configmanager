@@ -5,25 +5,26 @@ import "fmt"
 func ExampleConfig() {
 	cliOpts1 := []Opt{
 		StrOpt("", "required", nil, "required"),
-		IntOpt("", "int1", nil, "required int"),
-		BoolOpt("", "no", nil, "test bool option"),
+		BoolOpt("", "yes", true, "test bool option"),
 	}
 
 	cliOpts2 := []Opt{
-		IntOpt("", "int2", 789, "optional int"),
-		BoolOpt("", "yes", nil, "test bool option"),
+		BoolOpt("", "no", nil, "test bool option"),
 		StrOpt("", "optional", "optional", "optional"),
 	}
 
 	opts := []Opt{
-		StrOpt("", "test1", "test1", "test2"),
+		StrOpt("", "opt", "", "test opt"),
 	}
 
 	Conf.RegisterCliOpts("", cliOpts1)
 	Conf.RegisterCliOpts("cli", cliOpts2)
 	Conf.RegisterOpts("group", opts)
 
-	args := []string{"-cli_yes"}
+	// We don't ask that all the options must have a value or the default value.
+	// Conf.IsRequired = false
+
+	args := []string{"-cli_no=0", "-required", "required"}
 	// args = nil // You can pass nil to get the arguments from the command line.
 	if err := Conf.Parse(args); err != nil {
 		fmt.Println(err)
@@ -31,21 +32,17 @@ func ExampleConfig() {
 	}
 
 	fmt.Println(Conf.StringD("required", "abc"))
-	fmt.Println(Conf.IntD("int1", 123))
-	fmt.Println(Conf.BoolD("no", true))
+	fmt.Println(Conf.Bool("yes"))
 
 	fmt.Println(Conf.Group("cli").String("optional"))
-	fmt.Println(Conf.Group("cli").Int("int2"))
-	fmt.Println(Conf.Group("cli").Bool("yes"))
+	fmt.Println(Conf.Group("cli").Bool("no"))
 
-	fmt.Println(Conf.Group("group").String("test1"))
+	fmt.Println(Conf.Group("group").StringD("opt", "opt"))
 
 	// Output:
-	// abc
-	// 123
+	// required
 	// true
 	// optional
-	// 789
-	// true
-	// test1
+	// false
+	//
 }
