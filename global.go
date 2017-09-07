@@ -1,4 +1,4 @@
-package configmanager
+package config
 
 import (
 	"flag"
@@ -14,10 +14,10 @@ var PropertyParserOptName = "config_file"
 var Conf = NewDefault()
 
 // NewDefault returns a new default config manager.
-func NewDefault() *ConfigManager {
+func NewDefault() *Config {
 	cli := NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
 	prop := NewSimplePropertyParser(PropertyParserOptName)
-	conf := NewConfigManager(cli).AddParser(prop)
+	conf := NewConfig(cli).AddParser(prop)
 	conf.RegisterCliOpt(NewStrOpt("", PropertyParserOptName, nil, false,
 		"The path of the property config file."))
 	return conf

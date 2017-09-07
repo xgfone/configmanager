@@ -1,8 +1,8 @@
-package configmanager
+package config
 
 import "fmt"
 
-func ExampleConfigManager() {
+func ExampleConfig() {
 	Conf.RegisterCliOpt(NewStrOpt("", "required", nil, false, "required"))
 	Conf.RegisterCliOpt(NewStrOpt("", "optional", "optional", false, "optional"))
 	Conf.RegisterCliOpt(NewIntOpt("", "int1", nil, false, "required int"))

@@ -1,4 +1,4 @@
-package configmanager
+package config
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ type Opt interface {
 	Parse(string) (interface{}, error)
 }
 
-// ConfigManager is used to manage the configuration parsers.
-type ConfigManager struct {
+// Config is used to manage the configuration parsers.
+type Config struct {
 	Args []string
 
 	parsed  bool
@@ -35,9 +35,9 @@ type ConfigManager struct {
 	config  map[string]interface{}
 }
 
-// NewConfigManager returns a new ConfigMangaer.
-func NewConfigManager(cli CliParser) *ConfigManager {
-	return &ConfigManager{
+// NewConfig returns a new ConfigMangaer.
+func NewConfig(cli CliParser) *Config {
+	return &Config{
 		cli:     cli,
 		parsers: make([]Parser, 0, 2),
 		opts:    make([]Opt, 0),
@@ -47,7 +47,7 @@ func NewConfigManager(cli CliParser) *ConfigManager {
 }
 
 // Parse parses the option, including CLI, the config file, or others.
-func (c *ConfigManager) Parse(arguments []string) (err error) {
+func (c *Config) Parse(arguments []string) (err error) {
 	if c.parsed {
 		return ErrParsed
 	}
@@ -106,7 +106,7 @@ func (c *ConfigManager) Parse(arguments []string) (err error) {
 	return
 }
 
-func (c *ConfigManager) getValuesByKeys(name string, keys map[string]bool) (args map[string]string, err error) {
+func (c *Config) getValuesByKeys(name string, keys map[string]bool) (args map[string]string, err error) {
 	if len(keys) == 0 {
 		return
 	}
@@ -132,7 +132,7 @@ func (c *ConfigManager) getValuesByKeys(name string, keys map[string]bool) (args
 	return
 }
 
-func (c *ConfigManager) parseCli(arguments []string) (err error) {
+func (c *Config) parseCli(arguments []string) (err error) {
 	opts, args, err := c.cli.Parse(arguments)
 	if err != nil {
 		return
@@ -156,14 +156,14 @@ func (c *ConfigManager) parseCli(arguments []string) (err error) {
 }
 
 // Parsed returns true if has been parsed, or false.
-func (c *ConfigManager) Parsed() bool {
+func (c *Config) Parsed() bool {
 	return c.parsed
 }
 
 // AddParser adds a named parser.
 //
 // It will panic if the parser has been added.
-func (c *ConfigManager) AddParser(parser Parser) *ConfigManager {
+func (c *Config) AddParser(parser Parser) *Config {
 	if c.parsed {
 		panic(ErrParsed)
 	}
@@ -183,7 +183,7 @@ func (c *ConfigManager) AddParser(parser Parser) *ConfigManager {
 // registers it by RegisterOpt.
 //
 // It will panic if the option has been registered or is nil.
-func (c *ConfigManager) RegisterCliOpt(opt Opt) {
+func (c *Config) RegisterCliOpt(opt Opt) {
 	if c.parsed {
 		panic(ErrParsed)
 	}
@@ -200,7 +200,7 @@ func (c *ConfigManager) RegisterCliOpt(opt Opt) {
 }
 
 // RegisterCliOpts registers lots of options once.
-func (c *ConfigManager) RegisterCliOpts(opts []Opt) {
+func (c *Config) RegisterCliOpts(opts []Opt) {
 	for _, opt := range opts {
 		c.RegisterCliOpt(opt)
 	}
@@ -209,7 +209,7 @@ func (c *ConfigManager) RegisterCliOpts(opts []Opt) {
 // RegisterOpt registers a option, the type of which is string.
 //
 // It will panic if the option has been registered or is nil.
-func (c *ConfigManager) RegisterOpt(opt Opt) {
+func (c *Config) RegisterOpt(opt Opt) {
 	if c.parsed {
 		panic(ErrParsed)
 	}
@@ -225,7 +225,7 @@ func (c *ConfigManager) RegisterOpt(opt Opt) {
 }
 
 // RegisterOpts registers lots of options once.
-func (c *ConfigManager) RegisterOpts(opts []Opt) {
+func (c *Config) RegisterOpts(opts []Opt) {
 	for _, opt := range opts {
 		c.RegisterOpt(opt)
 	}
@@ -234,14 +234,14 @@ func (c *ConfigManager) RegisterOpts(opts []Opt) {
 // Value returns the option value named name.
 //
 // If no the option, return nil.
-func (c *ConfigManager) Value(name string) interface{} {
+func (c *Config) Value(name string) interface{} {
 	if !c.parsed {
 		panic(ErrNotParsed)
 	}
 	return c.config[name]
 }
 
-func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error) {
+func (c *Config) getValue(name string, _type optType) (interface{}, error) {
 	if !c.parsed {
 		return nil, ErrNotParsed
 	}
@@ -317,7 +317,7 @@ func (c *ConfigManager) getValue(name string, _type optType) (interface{}, error
 // BoolE returns the option value, the type of which is bool.
 //
 // Return an error if no the option or the type of the option isn't bool.
-func (c *ConfigManager) BoolE(name string) (bool, error) {
+func (c *Config) BoolE(name string) (bool, error) {
 	v, err := c.getValue(name, boolType)
 	if err != nil {
 		return false, err
@@ -326,7 +326,7 @@ func (c *ConfigManager) BoolE(name string) (bool, error) {
 }
 
 // BoolD is the same as BoolE, but returns the default if there is an error.
-func (c *ConfigManager) BoolD(name string, _default bool) bool {
+func (c *Config) BoolD(name string, _default bool) bool {
 	if value, err := c.BoolE(name); err == nil {
 		return value
 	}
@@ -334,7 +334,7 @@ func (c *ConfigManager) BoolD(name string, _default bool) bool {
 }
 
 // Bool is the same as BoolE, but panic if there is an error.
-func (c *ConfigManager) Bool(name string) bool {
+func (c *Config) Bool(name string) bool {
 	value, err := c.BoolE(name)
 	if err != nil {
 		panic(err)
@@ -345,7 +345,7 @@ func (c *ConfigManager) Bool(name string) bool {
 // StringE returns the option value, the type of which is string.
 //
 // Return an error if no the option or the type of the option isn't string.
-func (c *ConfigManager) StringE(name string) (string, error) {
+func (c *Config) StringE(name string) (string, error) {
 	v, err := c.getValue(name, stringType)
 	if err != nil {
 		return "", err
@@ -354,7 +354,7 @@ func (c *ConfigManager) StringE(name string) (string, error) {
 }
 
 // StringD is the same as StringE, but returns the default if there is an error.
-func (c *ConfigManager) StringD(name, _default string) string {
+func (c *Config) StringD(name, _default string) string {
 	if value, err := c.StringE(name); err == nil {
 		return value
 	}
@@ -362,7 +362,7 @@ func (c *ConfigManager) StringD(name, _default string) string {
 }
 
 // String is the same as StringE, but panic if there is an error.
-func (c *ConfigManager) String(name string) string {
+func (c *Config) String(name string) string {
 	value, err := c.StringE(name)
 	if err != nil {
 		panic(err)
@@ -373,7 +373,7 @@ func (c *ConfigManager) String(name string) string {
 // IntE returns the option value, the type of which is int.
 //
 // Return an error if no the option or the type of the option isn't int.
-func (c *ConfigManager) IntE(name string) (int, error) {
+func (c *Config) IntE(name string) (int, error) {
 	v, err := c.getValue(name, intType)
 	if err != nil {
 		return 0, err
@@ -382,7 +382,7 @@ func (c *ConfigManager) IntE(name string) (int, error) {
 }
 
 // IntD is the same as IntE, but returns the default if there is an error.
-func (c *ConfigManager) IntD(name string, _default int) int {
+func (c *Config) IntD(name string, _default int) int {
 	if value, err := c.IntE(name); err == nil {
 		return value
 	}
@@ -390,7 +390,7 @@ func (c *ConfigManager) IntD(name string, _default int) int {
 }
 
 // Int is the same as IntE, but panic if there is an error.
-func (c *ConfigManager) Int(name string) int {
+func (c *Config) Int(name string) int {
 	value, err := c.IntE(name)
 	if err != nil {
 		panic(err)
@@ -401,7 +401,7 @@ func (c *ConfigManager) Int(name string) int {
 // Int8E returns the option value, the type of which is int8.
 //
 // Return an error if no the option or the type of the option isn't int8.
-func (c *ConfigManager) Int8E(name string) (int8, error) {
+func (c *Config) Int8E(name string) (int8, error) {
 	v, err := c.getValue(name, int8Type)
 	if err != nil {
 		return 0, err
@@ -410,7 +410,7 @@ func (c *ConfigManager) Int8E(name string) (int8, error) {
 }
 
 // Int8D is the same as Int8E, but returns the default if there is an error.
-func (c *ConfigManager) Int8D(name string, _default int8) int8 {
+func (c *Config) Int8D(name string, _default int8) int8 {
 	if value, err := c.Int8E(name); err == nil {
 		return value
 	}
@@ -418,7 +418,7 @@ func (c *ConfigManager) Int8D(name string, _default int8) int8 {
 }
 
 // Int8 is the same as Int8E, but panic if there is an error.
-func (c *ConfigManager) Int8(name string) int8 {
+func (c *Config) Int8(name string) int8 {
 	value, err := c.Int8E(name)
 	if err != nil {
 		panic(err)
@@ -429,7 +429,7 @@ func (c *ConfigManager) Int8(name string) int8 {
 // Int16E returns the option value, the type of which is int16.
 //
 // Return an error if no the option or the type of the option isn't int16.
-func (c *ConfigManager) Int16E(name string) (int16, error) {
+func (c *Config) Int16E(name string) (int16, error) {
 	v, err := c.getValue(name, int16Type)
 	if err != nil {
 		return 0, err
@@ -438,7 +438,7 @@ func (c *ConfigManager) Int16E(name string) (int16, error) {
 }
 
 // Int16D is the same as Int16E, but returns the default if there is an error.
-func (c *ConfigManager) Int16D(name string, _default int16) int16 {
+func (c *Config) Int16D(name string, _default int16) int16 {
 	if value, err := c.Int16E(name); err == nil {
 		return value
 	}
@@ -446,7 +446,7 @@ func (c *ConfigManager) Int16D(name string, _default int16) int16 {
 }
 
 // Int16 is the same as Int16E, but panic if there is an error.
-func (c *ConfigManager) Int16(name string) int16 {
+func (c *Config) Int16(name string) int16 {
 	value, err := c.Int16E(name)
 	if err != nil {
 		panic(err)
@@ -457,7 +457,7 @@ func (c *ConfigManager) Int16(name string) int16 {
 // Int32E returns the option value, the type of which is int32.
 //
 // Return an error if no the option or the type of the option isn't int32.
-func (c *ConfigManager) Int32E(name string) (int32, error) {
+func (c *Config) Int32E(name string) (int32, error) {
 	v, err := c.getValue(name, int32Type)
 	if err != nil {
 		return 0, err
@@ -466,7 +466,7 @@ func (c *ConfigManager) Int32E(name string) (int32, error) {
 }
 
 // Int32D is the same as Int32E, but returns the default if there is an error.
-func (c *ConfigManager) Int32D(name string, _default int32) int32 {
+func (c *Config) Int32D(name string, _default int32) int32 {
 	if value, err := c.Int32E(name); err == nil {
 		return value
 	}
@@ -474,7 +474,7 @@ func (c *ConfigManager) Int32D(name string, _default int32) int32 {
 }
 
 // Int32 is the same as Int32E, but panic if there is an error.
-func (c *ConfigManager) Int32(name string) int32 {
+func (c *Config) Int32(name string) int32 {
 	value, err := c.Int32E(name)
 	if err != nil {
 		panic(err)
@@ -485,7 +485,7 @@ func (c *ConfigManager) Int32(name string) int32 {
 // Int64E returns the option value, the type of which is int64.
 //
 // Return an error if no the option or the type of the option isn't int64.
-func (c *ConfigManager) Int64E(name string) (int64, error) {
+func (c *Config) Int64E(name string) (int64, error) {
 	v, err := c.getValue(name, int64Type)
 	if err != nil {
 		return 0, err
@@ -494,7 +494,7 @@ func (c *ConfigManager) Int64E(name string) (int64, error) {
 }
 
 // Int64D is the same as Int64E, but returns the default if there is an error.
-func (c *ConfigManager) Int64D(name string, _default int64) int64 {
+func (c *Config) Int64D(name string, _default int64) int64 {
 	if value, err := c.Int64E(name); err == nil {
 		return value
 	}
@@ -502,7 +502,7 @@ func (c *ConfigManager) Int64D(name string, _default int64) int64 {
 }
 
 // Int64 is the same as Int64E, but panic if there is an error.
-func (c *ConfigManager) Int64(name string) int64 {
+func (c *Config) Int64(name string) int64 {
 	value, err := c.Int64E(name)
 	if err != nil {
 		panic(err)
@@ -513,7 +513,7 @@ func (c *ConfigManager) Int64(name string) int64 {
 // UintE returns the option value, the type of which is uint.
 //
 // Return an error if no the option or the type of the option isn't uint.
-func (c *ConfigManager) UintE(name string) (uint, error) {
+func (c *Config) UintE(name string) (uint, error) {
 	v, err := c.getValue(name, uintType)
 	if err != nil {
 		return 0, err
@@ -522,7 +522,7 @@ func (c *ConfigManager) UintE(name string) (uint, error) {
 }
 
 // UintD is the same as UintE, but returns the default if there is an error.
-func (c *ConfigManager) UintD(name string, _default uint) uint {
+func (c *Config) UintD(name string, _default uint) uint {
 	if value, err := c.UintE(name); err == nil {
 		return value
 	}
@@ -530,7 +530,7 @@ func (c *ConfigManager) UintD(name string, _default uint) uint {
 }
 
 // Uint is the same as UintE, but panic if there is an error.
-func (c *ConfigManager) Uint(name string) uint {
+func (c *Config) Uint(name string) uint {
 	value, err := c.UintE(name)
 	if err != nil {
 		panic(err)
@@ -541,7 +541,7 @@ func (c *ConfigManager) Uint(name string) uint {
 // Uint8E returns the option value, the type of which is uint8.
 //
 // Return an error if no the option or the type of the option isn't uint8.
-func (c *ConfigManager) Uint8E(name string) (uint8, error) {
+func (c *Config) Uint8E(name string) (uint8, error) {
 	v, err := c.getValue(name, uint8Type)
 	if err != nil {
 		return 0, err
@@ -550,7 +550,7 @@ func (c *ConfigManager) Uint8E(name string) (uint8, error) {
 }
 
 // Uint8D is the same as Uint8E, but returns the default if there is an error.
-func (c *ConfigManager) Uint8D(name string, _default uint8) uint8 {
+func (c *Config) Uint8D(name string, _default uint8) uint8 {
 	if value, err := c.Uint8E(name); err == nil {
 		return value
 	}
@@ -558,7 +558,7 @@ func (c *ConfigManager) Uint8D(name string, _default uint8) uint8 {
 }
 
 // Uint8 is the same as Uint8E, but panic if there is an error.
-func (c *ConfigManager) Uint8(name string) uint8 {
+func (c *Config) Uint8(name string) uint8 {
 	value, err := c.Uint8E(name)
 	if err != nil {
 		panic(err)
@@ -569,7 +569,7 @@ func (c *ConfigManager) Uint8(name string) uint8 {
 // Uint16E returns the option value, the type of which is uint16.
 //
 // Return an error if no the option or the type of the option isn't uint16.
-func (c *ConfigManager) Uint16E(name string) (uint16, error) {
+func (c *Config) Uint16E(name string) (uint16, error) {
 	v, err := c.getValue(name, uint16Type)
 	if err != nil {
 		return 0, err
@@ -578,7 +578,7 @@ func (c *ConfigManager) Uint16E(name string) (uint16, error) {
 }
 
 // Uint16D is the same as Uint16E, but returns the default if there is an error.
-func (c *ConfigManager) Uint16D(name string, _default uint16) uint16 {
+func (c *Config) Uint16D(name string, _default uint16) uint16 {
 	if value, err := c.Uint16E(name); err == nil {
 		return value
 	}
@@ -586,7 +586,7 @@ func (c *ConfigManager) Uint16D(name string, _default uint16) uint16 {
 }
 
 // Uint16 is the same as Uint16E, but panic if there is an error.
-func (c *ConfigManager) Uint16(name string) uint16 {
+func (c *Config) Uint16(name string) uint16 {
 	value, err := c.Uint16E(name)
 	if err != nil {
 		panic(err)
@@ -597,7 +597,7 @@ func (c *ConfigManager) Uint16(name string) uint16 {
 // Uint32E returns the option value, the type of which is uint32.
 //
 // Return an error if no the option or the type of the option isn't uint32.
-func (c *ConfigManager) Uint32E(name string) (uint32, error) {
+func (c *Config) Uint32E(name string) (uint32, error) {
 	v, err := c.getValue(name, uint32Type)
 	if err != nil {
 		return 0, err
@@ -606,7 +606,7 @@ func (c *ConfigManager) Uint32E(name string) (uint32, error) {
 }
 
 // Uint32D is the same as Uint32E, but returns the default if there is an error.
-func (c *ConfigManager) Uint32D(name string, _default uint32) uint32 {
+func (c *Config) Uint32D(name string, _default uint32) uint32 {
 	if value, err := c.Uint32E(name); err == nil {
 		return value
 	}
@@ -614,7 +614,7 @@ func (c *ConfigManager) Uint32D(name string, _default uint32) uint32 {
 }
 
 // Uint32 is the same as Uint32E, but panic if there is an error.
-func (c *ConfigManager) Uint32(name string) uint32 {
+func (c *Config) Uint32(name string) uint32 {
 	value, err := c.Uint32E(name)
 	if err != nil {
 		panic(err)
@@ -625,7 +625,7 @@ func (c *ConfigManager) Uint32(name string) uint32 {
 // Uint64E returns the option value, the type of which is uint64.
 //
 // Return an error if no the option or the type of the option isn't uint64.
-func (c *ConfigManager) Uint64E(name string) (uint64, error) {
+func (c *Config) Uint64E(name string) (uint64, error) {
 	v, err := c.getValue(name, uint64Type)
 	if err != nil {
 		return 0, err
@@ -634,7 +634,7 @@ func (c *ConfigManager) Uint64E(name string) (uint64, error) {
 }
 
 // Uint64D is the same as Uint64E, but returns the default if there is an error.
-func (c *ConfigManager) Uint64D(name string, _default uint64) uint64 {
+func (c *Config) Uint64D(name string, _default uint64) uint64 {
 	if value, err := c.Uint64E(name); err == nil {
 		return value
 	}
@@ -642,7 +642,7 @@ func (c *ConfigManager) Uint64D(name string, _default uint64) uint64 {
 }
 
 // Uint64 is the same as Uint64E, but panic if there is an error.
-func (c *ConfigManager) Uint64(name string) uint64 {
+func (c *Config) Uint64(name string) uint64 {
 	value, err := c.Uint64E(name)
 	if err != nil {
 		panic(err)
@@ -653,7 +653,7 @@ func (c *ConfigManager) Uint64(name string) uint64 {
 // Float32E returns the option value, the type of which is float32.
 //
 // Return an error if no the option or the type of the option isn't float32.
-func (c *ConfigManager) Float32E(name string) (float32, error) {
+func (c *Config) Float32E(name string) (float32, error) {
 	v, err := c.getValue(name, float32Type)
 	if err != nil {
 		return 0, err
@@ -662,7 +662,7 @@ func (c *ConfigManager) Float32E(name string) (float32, error) {
 }
 
 // Float32D is the same as Float32E, but returns the default if there is an error.
-func (c *ConfigManager) Float32D(name string, _default float32) float32 {
+func (c *Config) Float32D(name string, _default float32) float32 {
 	if value, err := c.Float32E(name); err == nil {
 		return value
 	}
@@ -670,7 +670,7 @@ func (c *ConfigManager) Float32D(name string, _default float32) float32 {
 }
 
 // Float32 is the same as Float32E, but panic if there is an error.
-func (c *ConfigManager) Float32(name string) float32 {
+func (c *Config) Float32(name string) float32 {
 	value, err := c.Float32E(name)
 	if err != nil {
 		panic(err)
@@ -681,7 +681,7 @@ func (c *ConfigManager) Float32(name string) float32 {
 // Float64E returns the option value, the type of which is float64.
 //
 // Return an error if no the option or the type of the option isn't float64.
-func (c *ConfigManager) Float64E(name string) (float64, error) {
+func (c *Config) Float64E(name string) (float64, error) {
 	v, err := c.getValue(name, float64Type)
 	if err != nil {
 		return 0, err
@@ -690,7 +690,7 @@ func (c *ConfigManager) Float64E(name string) (float64, error) {
 }
 
 // Float64D is the same as Float64E, but returns the default if there is an error.
-func (c *ConfigManager) Float64D(name string, _default float64) float64 {
+func (c *Config) Float64D(name string, _default float64) float64 {
 	if value, err := c.Float64E(name); err == nil {
 		return value
 	}
@@ -698,7 +698,7 @@ func (c *ConfigManager) Float64D(name string, _default float64) float64 {
 }
 
 // Float64 is the same as Float64E, but panic if there is an error.
-func (c *ConfigManager) Float64(name string) float64 {
+func (c *Config) Float64(name string) float64 {
 	value, err := c.Float64E(name)
 	if err != nil {
 		panic(err)
