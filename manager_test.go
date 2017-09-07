@@ -3,31 +3,49 @@ package config
 import "fmt"
 
 func ExampleConfig() {
-	Conf.RegisterCliOpt(StrOpt("", "required", nil, false, "required"))
-	Conf.RegisterCliOpt(StrOpt("", "optional", "optional", false, "optional"))
-	Conf.RegisterCliOpt(IntOpt("", "int1", nil, false, "required int"))
-	Conf.RegisterCliOpt(IntOpt("", "int2", 789, false, "optional int"))
-	Conf.RegisterCliOpt(BoolOpt("", "yes", nil, false, "test bool option"))
-	Conf.RegisterCliOpt(BoolOpt("", "no", nil, false, "test bool option"))
+	cliOpts1 := []Opt{
+		StrOpt("", "required", nil, false, "required"),
+		IntOpt("", "int1", nil, false, "required int"),
+		BoolOpt("", "no", nil, false, "test bool option"),
+	}
 
-	args := []string{"-yes"}
+	cliOpts2 := []Opt{
+		IntOpt("", "int2", 789, false, "optional int"),
+		BoolOpt("", "yes", nil, false, "test bool option"),
+		StrOpt("", "optional", "optional", false, "optional"),
+	}
+
+	opts := []Opt{
+		StrOpt("", "test1", "test1", true, "test2"),
+	}
+
+	Conf.RegisterOpts("", true, cliOpts1)
+	Conf.RegisterOpts("cli", true, cliOpts2)
+	Conf.RegisterOpts("group", false, opts)
+
+	args := []string{"-cli_yes"}
+	// args = nil // You can pass nil to get the arguments from the command line.
 	if err := Conf.Parse(args); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println(Conf.BoolD("yes", true))
-	fmt.Println(Conf.BoolD("no", false))
 	fmt.Println(Conf.StringD("required", "abc"))
-	fmt.Println(Conf.String("optional"))
 	fmt.Println(Conf.IntD("int1", 123))
-	fmt.Println(Conf.Int("int2"))
+	fmt.Println(Conf.BoolD("no", true))
+
+	fmt.Println(Conf.Group("cli").String("optional"))
+	fmt.Println(Conf.Group("cli").Int("int2"))
+	fmt.Println(Conf.Group("cli").Bool("yes"))
+
+	fmt.Println(Conf.Group("group").String("test1"))
 
 	// Output:
-	// true
-	// false
 	// abc
-	// optional
 	// 123
+	// true
+	// optional
 	// 789
+	// true
+	// test1
 }

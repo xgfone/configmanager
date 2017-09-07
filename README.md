@@ -1,5 +1,6 @@
 # go-config
-An extensible go configuration. The default parsers can parse the CLI arguments and the property file. You can implement and register your parser, and the configuration engine will call the parser to parse the configuration.
+An extensible go configuration. The default parsers can parse the CLI arguments and the ini file. You can implement and register your parser, and the configuration engine will call the parser to parse the configuration.
+
 
 ## Principle of Work
 
@@ -13,6 +14,12 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
     3. Call the method `Parse()` of the parser with those option values, and get the parsed result.
     4. Merge the parsed result together.
 6. Check whether some required options have neither the parsed value nor the default value.
+
+
+## Parser
+
+In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See [doc](https://godoc.org/github.com/xgfone/go-config).
+
 
 ## Usage
 ```go
@@ -29,29 +36,38 @@ import (
 
 func main() {
 	cliParser := config.NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
-	propertyParser := config.NewSimplePropertyParser("config_file")
-	conf := config.NewConfig(cliParser).AddParser(propertyParser)
+	iniParser := config.NewSimpleIniParser("config-file")
+	conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-	conf.RegisterCliOpt(config.StrOpt("", "ip", nil, true, "the ip address"))
-	conf.RegisterCliOpt(config.IntOpt("", "port", 80, false, "the port"))
-	conf.RegisterOpt(config.StrOpt("", "redis", "redis://127.0.0.1:6379/0",
+	conf.RegisterOpt("", true, config.StrOpt("", "ip", nil, true, "the ip address"))
+	conf.RegisterOpt("", true, config.IntOpt("", "port", 80, false, "the port"))
+	conf.RegisterOpt("", true, config.StrOpt("", "config-file", nil, false,
+		"The path of the ini config file."))
+	conf.RegisterOpt("redis", true, config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
 		false, "the redis connection url"))
-	conf.RegisterCliOpt(config.StrOpt("", "config_file", nil, false,
-		"The path of the config file."))
 
 	if err := conf.Parse(nil); err != nil {
+		conf.Audit() // View the internal information.
 		fmt.Println(err)
 		return
 	}
 
 	fmt.Println(conf.String("ip"))
 	fmt.Println(conf.Int("port"))
-	fmt.Println(conf.String("redis"))
+	fmt.Println(conf.Group("redis").String("conn"))
 	fmt.Println(conf.Args)
+
+	// Execute:
+	//     PROGRAM -ip 0.0.0.0 aa bb cc
+	//
+	// Output:
+	//     0.0.0.0
+	//     80
+	//     [aa bb cc]
 }
 ```
 
-You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the property parser `NewSimplePropertyParser()` and register the CLI option `config_file`.
+You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`.
 
 The package has created a global default `Config` by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
 ```go
@@ -69,17 +85,10 @@ var opts = []config.Opt{
 }
 
 func main() {
-	config.Conf.RegisterCliOpts(opts)
+	config.Conf.RegisterOpts("", true, opts)
 	config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
 
 	fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0
 	fmt.Println(config.Conf.Int("port"))  // Output: 80
 }
 ```
-
-## Parser
-
-In order to deveplop a CLI parser, you just need to implement the interface `CliParser`. In a `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See [doc](https://godoc.org/github.com/xgfone/go-config).
-
-## Notice
-At present, the Config does not support the section like [ini](https://github.com/go-ini/ini) or the group in [oslo.config](https://github.com/openstack/oslo.config) developed by OpenStack. The function will be added later.

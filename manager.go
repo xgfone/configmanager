@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -25,43 +27,103 @@ type Opt interface {
 
 // Config is used to manage the configuration parsers.
 type Config struct {
+	// Args is the rest of the CLI arguments, which are not the options,
+	// such as the option starting with the prefix "-" or "--".
 	Args []string
+
+	defaultGroup string
 
 	parsed  bool
 	cli     CliParser
 	parsers []Parser
-	opts    []Opt
-	cliopts []Opt
-	config  map[string]interface{}
+
+	groups map[string]OptGroup
 }
 
-// NewConfig returns a new ConfigMangaer.
+// NewConfig returns a new Config.
+//
+// The name of the default group is DEFAULT.
 func NewConfig(cli CliParser) *Config {
 	return &Config{
+		defaultGroup: "DEFAULT",
+
 		cli:     cli,
 		parsers: make([]Parser, 0, 2),
-		opts:    make([]Opt, 0),
-		cliopts: make([]Opt, 0),
-		config:  make(map[string]interface{}),
+		groups:  make(map[string]OptGroup, 2),
 	}
 }
 
+// Audit outputs the internal information to find out the troube.
+func (c *Config) Audit() {
+	fmt.Printf("%s:\n", filepath.Base(os.Args[0]))
+	fmt.Printf("    Args: %v\n", c.Args)
+	fmt.Printf("    DefaultGroup: %s\n", c.defaultGroup)
+	fmt.Printf("    Cli Parser: %s\n", c.cli.Name())
+
+	// Parsers
+	fmt.Printf("    Parsers:")
+	for _, parser := range c.parsers {
+		fmt.Printf(" %s", parser.Name())
+	}
+	fmt.Printf("\n")
+
+	// Group
+	fmt.Printf("    Group:\n")
+	for gname, group := range c.groups {
+		fmt.Printf("        %s:\n", gname)
+
+		fmt.Printf("            Opts:")
+		for name, opt := range group.opts {
+			if opt.isCli {
+				fmt.Printf(" %s[CLI]", name)
+			} else {
+				fmt.Printf(" %s", name)
+			}
+		}
+		fmt.Printf("\n")
+
+		fmt.Printf("            Values:\n")
+		for name, value := range group.values {
+			fmt.Printf("                %s=%s\n", name, value)
+		}
+	}
+
+	fmt.Println()
+}
+
 // Parse parses the option, including CLI, the config file, or others.
+//
+// if the arguments is nil, it's equal to os.Args[1:].
 func (c *Config) Parse(arguments []string) (err error) {
 	if c.parsed {
 		return ErrParsed
 	}
 	c.parsed = true
 
+	// Ensure that the default group exists.
+	if _, ok := c.groups[c.defaultGroup]; !ok {
+		c.groups[c.defaultGroup] = NewOptGroup(c.defaultGroup)
+	}
+
 	// Register the CLI option into the CLI parser.
-	c.cli.Register(c.cliopts)
+	groupOpts := make(map[string][]Opt, len(c.groups))
+	for name, group := range c.groups {
+		groupOpts[name] = group.getAllOpts(true)
+	}
+	c.cli.Register(c.defaultGroup, groupOpts)
 
 	// Register the option into the other parsers.
+	for name, group := range c.groups {
+		groupOpts[name] = group.getAllOpts(false)
+	}
 	for _, p := range c.parsers {
-		p.Register(c.opts)
+		p.Register(c.defaultGroup, groupOpts)
 	}
 
 	// Parse the CLI arguments.
+	if arguments == nil {
+		arguments = os.Args[1:]
+	}
 	if err = c.parseCli(arguments); err != nil {
 		return
 	}
@@ -73,81 +135,70 @@ func (c *Config) Parse(arguments []string) (err error) {
 			return err
 		}
 
-		opts, err := parser.Parse(args)
+		groups, err := parser.Parse(args)
 		if err != nil {
 			return err
 		}
 
-		for _, opt := range c.opts {
-			if value, ok := opts[opt.GetName()]; ok {
-				v, err := opt.Parse(value)
-				if err != nil {
-					return err
+		for gname, options := range groups {
+			if group, ok := c.groups[gname]; ok {
+				if err = group.setOptions(options); err != nil {
+					return nil
 				}
-				c.config[opt.GetName()] = v
-			} else if _default := opt.GetDefault(); _default != nil {
-				c.config[opt.GetName()] = _default
 			}
 		}
 	}
 
-	// Check whether some required options neither have the value nor the default value.
-	for _, opt := range c.cliopts {
-		if _, ok := c.config[opt.GetName()]; !ok && opt.IsRequired() {
-			return fmt.Errorf("the option '%s' is required, but has no value", opt.GetName())
-		}
-	}
-	for _, opt := range c.opts {
-		if _, ok := c.config[opt.GetName()]; !ok && opt.IsRequired() {
-			return fmt.Errorf("the option '%s' is required, but has no value", opt.GetName())
+	// Check whether all the groups have parsed all the required options.
+	for _, group := range c.groups {
+		if err = group.checkRequiredOption(); err != nil {
+			return err
 		}
 	}
 
 	return
 }
 
-func (c *Config) getValuesByKeys(name string, keys map[string]bool) (args map[string]string, err error) {
+func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
+	args map[string]string, err error) {
 	if len(keys) == 0 {
 		return
 	}
 
+	group := c.Group(c.defaultGroup)
 	args = make(map[string]string, len(keys))
 	for key, required := range keys {
-		v, ok := c.config[key]
-		if !ok {
-			if !required {
+		if v := group.Value(key); v != nil {
+			if s, ok := v.(string); ok {
+				args[key] = s
 				continue
 			}
-			err = fmt.Errorf("the option '%s' is missing, which is reqired by the parser '%s'", key, name)
+			err = fmt.Errorf("the type of the option '%s' in the default group is not string",
+				key)
 			return
 		}
-		s, ok := v.(string)
-		if !ok {
-			err = fmt.Errorf("the type of the option '%s' is not string", key)
-			return
+		if !required {
+			continue
 		}
-		args[key] = s
+		err = fmt.Errorf("the option '%s' is missing, which is reqired by the parser '%s'",
+			key, name)
+		return
 	}
 
 	return
 }
 
 func (c *Config) parseCli(arguments []string) (err error) {
-	opts, args, err := c.cli.Parse(arguments)
+	groups, args, err := c.cli.Parse(arguments)
 	if err != nil {
 		return
 	}
 
-	// Parse the values of all the options
-	for _, opt := range c.cliopts {
-		if value, ok := opts[opt.GetName()]; ok {
-			v, err := opt.Parse(value)
-			if err != nil {
-				return err
+	for gname, opts := range groups {
+		if group, ok := c.groups[gname]; ok {
+			if err = group.setOptions(opts); err != nil {
+				return
 			}
-			c.config[opt.GetName()] = v
-		} else if _default := opt.GetDefault(); _default != nil {
-			c.config[opt.GetName()] = _default
 		}
 	}
 
@@ -179,529 +230,282 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
-// RegisterCliOpt registers a CLI option, the type of which is string, also
-// registers it by RegisterOpt.
+// RegisterOpt registers the option into the group of `name`.
 //
-// It will panic if the option has been registered or is nil.
-func (c *Config) RegisterCliOpt(opt Opt) {
-	if c.parsed {
-		panic(ErrParsed)
-	}
-	c.RegisterOpt(opt)
-
-	name := opt.GetName()
-	for _, _opt := range c.cliopts {
-		if _opt.GetName() == name {
-			panic(fmt.Errorf("the option '%s' has been registered", name))
-		}
-	}
-
-	c.cliopts = append(c.cliopts, opt)
-}
-
-// RegisterCliOpts registers lots of options once.
-func (c *Config) RegisterCliOpts(opts []Opt) {
-	for _, opt := range opts {
-		c.RegisterCliOpt(opt)
-	}
-}
-
-// RegisterOpt registers a option, the type of which is string.
+// If the group name is "", it's regarded as the default group.
 //
-// It will panic if the option has been registered or is nil.
-func (c *Config) RegisterOpt(opt Opt) {
+// The first argument cli indicates whether the option is as the CLI option, too.
+func (c *Config) RegisterOpt(group string, cli bool, opt Opt) {
 	if c.parsed {
 		panic(ErrParsed)
 	}
 
-	name := opt.GetName()
-	for _, _opt := range c.opts {
-		if _opt.GetName() == name {
-			panic(fmt.Errorf("the option '%s' has been registered", name))
-		}
+	group = c.getGroupName(group)
+	g, ok := c.groups[group]
+	if !ok {
+		g = NewOptGroup(group)
+		c.groups[group] = g
 	}
 
-	c.opts = append(c.opts, opt)
+	g.registerOpt(cli, opt)
 }
 
-// RegisterOpts registers lots of options once.
-func (c *Config) RegisterOpts(opts []Opt) {
-	for _, opt := range opts {
-		c.RegisterOpt(opt)
-	}
-}
-
-// Value returns the option value named name.
+// RegisterOpts registers many options into the group of `name` once.
 //
-// If no the option, return nil.
-func (c *Config) Value(name string) interface{} {
+// If the group name is "", it's regarded as the default group.
+//
+// The first argument cli indicates whether the option is as the CLI option, too.
+func (c *Config) RegisterOpts(group string, cli bool, opts []Opt) {
+	for _, opt := range opts {
+		c.RegisterOpt(group, cli, opt)
+	}
+}
+
+func (c *Config) getGroupName(name string) string {
+	if name == "" {
+		return c.defaultGroup
+	}
+	return name
+}
+
+// Group returns the OptGroup named group.
+//
+// Return the default group if the group name is "".
+//
+// The group must exist, or panic.
+func (c *Config) Group(group string) OptGroup {
 	if !c.parsed {
 		panic(ErrNotParsed)
 	}
-	return c.config[name]
+
+	group = c.getGroupName(group)
+	if g, ok := c.groups[group]; ok {
+		return g
+	}
+	panic(fmt.Errorf("have no the group '%s'", group))
 }
 
-func (c *Config) getValue(name string, _type optType) (interface{}, error) {
-	if !c.parsed {
-		return nil, ErrNotParsed
-	}
-
-	opt := c.Value(name)
-	if opt == nil {
-		return nil, fmt.Errorf("no option '%s'", name)
-	}
-
-	switch _type {
-	case boolType:
-		if v, ok := opt.(bool); ok {
-			return v, nil
-		}
-	case stringType:
-		if v, ok := opt.(string); ok {
-			return v, nil
-		}
-	case intType:
-		if v, ok := opt.(int); ok {
-			return v, nil
-		}
-	case int8Type:
-		if v, ok := opt.(int8); ok {
-			return v, nil
-		}
-	case int16Type:
-		if v, ok := opt.(int16); ok {
-			return v, nil
-		}
-	case int32Type:
-		if v, ok := opt.(int32); ok {
-			return v, nil
-		}
-	case int64Type:
-		if v, ok := opt.(int64); ok {
-			return v, nil
-		}
-	case uintType:
-		if v, ok := opt.(uint); ok {
-			return v, nil
-		}
-	case uint8Type:
-		if v, ok := opt.(uint8); ok {
-			return v, nil
-		}
-	case uint16Type:
-		if v, ok := opt.(uint16); ok {
-			return v, nil
-		}
-	case uint32Type:
-		if v, ok := opt.(uint32); ok {
-			return v, nil
-		}
-	case uint64Type:
-		if v, ok := opt.(uint64); ok {
-			return v, nil
-		}
-	case float32Type:
-		if v, ok := opt.(float32); ok {
-			return v, nil
-		}
-	case float64Type:
-		if v, ok := opt.(float64); ok {
-			return v, nil
-		}
-	default:
-		return nil, fmt.Errorf("don't support the type %s", _type)
-	}
-	return nil, fmt.Errorf("the type of the option '%s' is not %s", name, _type)
-}
-
-// BoolE returns the option value, the type of which is bool.
+// SetDefaultGroup resets the name of the default group.
 //
-// Return an error if no the option or the type of the option isn't bool.
+// If you want to modify it, you must do it before registering any options.
+func (c *Config) SetDefaultGroup(name string) {
+	if c.parsed {
+		panic(ErrParsed)
+	}
+	c.defaultGroup = name
+}
+
+// Value is equal to c.Group("").Value(name).
+func (c *Config) Value(name string) interface{} {
+	return c.Group("").Value(name)
+}
+
+// BoolE is equal to c.Group("").BoolE(name).
 func (c *Config) BoolE(name string) (bool, error) {
-	v, err := c.getValue(name, boolType)
-	if err != nil {
-		return false, err
-	}
-	return v.(bool), nil
+	return c.Group("").BoolE(name)
 }
 
-// BoolD is the same as BoolE, but returns the default if there is an error.
+// BoolD is equal to c.Group("").BoolD(name, _default).
 func (c *Config) BoolD(name string, _default bool) bool {
-	if value, err := c.BoolE(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").BoolD(name, _default)
 }
 
-// Bool is the same as BoolE, but panic if there is an error.
+// Bool is equal to c.Group("").Bool(name).
 func (c *Config) Bool(name string) bool {
-	value, err := c.BoolE(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Bool(name)
 }
 
-// StringE returns the option value, the type of which is string.
-//
-// Return an error if no the option or the type of the option isn't string.
+// StringE is equal to c.Group("").StringE(name).
 func (c *Config) StringE(name string) (string, error) {
-	v, err := c.getValue(name, stringType)
-	if err != nil {
-		return "", err
-	}
-	return v.(string), nil
+	return c.Group("").StringE(name)
 }
 
-// StringD is the same as StringE, but returns the default if there is an error.
+// StringD is equal to c.Group("").StringD(name, _default).
 func (c *Config) StringD(name, _default string) string {
-	if value, err := c.StringE(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").StringD(name, _default)
 }
 
-// String is the same as StringE, but panic if there is an error.
+// String is equal to c.Group("").String(name).
 func (c *Config) String(name string) string {
-	value, err := c.StringE(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").String(name)
 }
 
-// IntE returns the option value, the type of which is int.
-//
-// Return an error if no the option or the type of the option isn't int.
+// IntE is equal to c.Group("").IntE(name).
 func (c *Config) IntE(name string) (int, error) {
-	v, err := c.getValue(name, intType)
-	if err != nil {
-		return 0, err
-	}
-	return v.(int), nil
+	return c.Group("").IntE(name)
 }
 
-// IntD is the same as IntE, but returns the default if there is an error.
+// IntD is equal to c.Group("").IntD(name, _default).
 func (c *Config) IntD(name string, _default int) int {
-	if value, err := c.IntE(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").IntD(name, _default)
 }
 
-// Int is the same as IntE, but panic if there is an error.
+// Int is equal to c.Group("").Int(name).
 func (c *Config) Int(name string) int {
-	value, err := c.IntE(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Int(name)
 }
 
-// Int8E returns the option value, the type of which is int8.
-//
-// Return an error if no the option or the type of the option isn't int8.
+// Int8E is equal to c.Group("").Int8E(name).
 func (c *Config) Int8E(name string) (int8, error) {
-	v, err := c.getValue(name, int8Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(int8), nil
+	return c.Group("").Int8E(name)
 }
 
-// Int8D is the same as Int8E, but returns the default if there is an error.
+// Int8D is equal to c.Group("").Int8D(name, _default).
 func (c *Config) Int8D(name string, _default int8) int8 {
-	if value, err := c.Int8E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Int8D(name, _default)
 }
 
-// Int8 is the same as Int8E, but panic if there is an error.
+// Int8 is equal to c.Group("").Int8(name).
 func (c *Config) Int8(name string) int8 {
-	value, err := c.Int8E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Int8(name)
 }
 
-// Int16E returns the option value, the type of which is int16.
-//
-// Return an error if no the option or the type of the option isn't int16.
+// Int16E is equal to c.Group("").Int16E(name).
 func (c *Config) Int16E(name string) (int16, error) {
-	v, err := c.getValue(name, int16Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(int16), nil
+	return c.Group("").Int16E(name)
 }
 
-// Int16D is the same as Int16E, but returns the default if there is an error.
+// Int16D is equal to c.Group("").Int16D(name, _default).
 func (c *Config) Int16D(name string, _default int16) int16 {
-	if value, err := c.Int16E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Int16D(name, _default)
 }
 
-// Int16 is the same as Int16E, but panic if there is an error.
+// Int16 is equal to c.Group("").Int16(name).
 func (c *Config) Int16(name string) int16 {
-	value, err := c.Int16E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Int16(name)
 }
 
-// Int32E returns the option value, the type of which is int32.
-//
-// Return an error if no the option or the type of the option isn't int32.
+// Int32E is equal to c.Group("").Int32E(name).
 func (c *Config) Int32E(name string) (int32, error) {
-	v, err := c.getValue(name, int32Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(int32), nil
+	return c.Group("").Int32E(name)
 }
 
-// Int32D is the same as Int32E, but returns the default if there is an error.
+// Int32D is equal to c.Group("").Int32D(name, _default).
 func (c *Config) Int32D(name string, _default int32) int32 {
-	if value, err := c.Int32E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Int32D(name, _default)
 }
 
-// Int32 is the same as Int32E, but panic if there is an error.
+// Int32 is equal to c.Group("").Int32(name).
 func (c *Config) Int32(name string) int32 {
-	value, err := c.Int32E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Int32(name)
 }
 
-// Int64E returns the option value, the type of which is int64.
-//
-// Return an error if no the option or the type of the option isn't int64.
+// Int64E is equal to c.Group("").Int64E(name).
 func (c *Config) Int64E(name string) (int64, error) {
-	v, err := c.getValue(name, int64Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(int64), nil
+	return c.Group("").Int64E(name)
 }
 
-// Int64D is the same as Int64E, but returns the default if there is an error.
+// Int64D is equal to c.Group("").Int64D(name, _default).
 func (c *Config) Int64D(name string, _default int64) int64 {
-	if value, err := c.Int64E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Int64D(name, _default)
 }
 
-// Int64 is the same as Int64E, but panic if there is an error.
+// Int64 is equal to c.Group("").Int64(name).
 func (c *Config) Int64(name string) int64 {
-	value, err := c.Int64E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Int64(name)
 }
 
-// UintE returns the option value, the type of which is uint.
-//
-// Return an error if no the option or the type of the option isn't uint.
+// UintE is equal to c.Group("").UintE(name).
 func (c *Config) UintE(name string) (uint, error) {
-	v, err := c.getValue(name, uintType)
-	if err != nil {
-		return 0, err
-	}
-	return v.(uint), nil
+	return c.Group("").UintE(name)
 }
 
-// UintD is the same as UintE, but returns the default if there is an error.
+// UintD is equal to c.Group("").UintD(name, _default).
 func (c *Config) UintD(name string, _default uint) uint {
-	if value, err := c.UintE(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").UintD(name, _default)
 }
 
-// Uint is the same as UintE, but panic if there is an error.
+// Uint is equal to c.Group("").Uint(name).
 func (c *Config) Uint(name string) uint {
-	value, err := c.UintE(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Uint(name)
 }
 
-// Uint8E returns the option value, the type of which is uint8.
-//
-// Return an error if no the option or the type of the option isn't uint8.
+// Uint8E is equal to c.Group("").Uint8E(name).
 func (c *Config) Uint8E(name string) (uint8, error) {
-	v, err := c.getValue(name, uint8Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(uint8), nil
+	return c.Group("").Uint8E(name)
 }
 
-// Uint8D is the same as Uint8E, but returns the default if there is an error.
+// Uint8D is equal to c.Group("").Uint8D(name, _default).
 func (c *Config) Uint8D(name string, _default uint8) uint8 {
-	if value, err := c.Uint8E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Uint8D(name, _default)
 }
 
-// Uint8 is the same as Uint8E, but panic if there is an error.
+// Uint8 is equal to c.Group("").Uint8(name).
 func (c *Config) Uint8(name string) uint8 {
-	value, err := c.Uint8E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Uint8(name)
 }
 
-// Uint16E returns the option value, the type of which is uint16.
-//
-// Return an error if no the option or the type of the option isn't uint16.
+// Uint16E is equal to c.Group("").Uint16E(name).
 func (c *Config) Uint16E(name string) (uint16, error) {
-	v, err := c.getValue(name, uint16Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(uint16), nil
+	return c.Group("").Uint16E(name)
 }
 
-// Uint16D is the same as Uint16E, but returns the default if there is an error.
+// Uint16D is equal to c.Group("").Uint16D(name, _default).
 func (c *Config) Uint16D(name string, _default uint16) uint16 {
-	if value, err := c.Uint16E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Uint16D(name, _default)
 }
 
-// Uint16 is the same as Uint16E, but panic if there is an error.
+// Uint16 is equal to c.Group("").Uint16(name).
 func (c *Config) Uint16(name string) uint16 {
-	value, err := c.Uint16E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Uint16(name)
 }
 
-// Uint32E returns the option value, the type of which is uint32.
-//
-// Return an error if no the option or the type of the option isn't uint32.
+// Uint32E is equal to c.Group("").Uint32E(name).
 func (c *Config) Uint32E(name string) (uint32, error) {
-	v, err := c.getValue(name, uint32Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(uint32), nil
+	return c.Group("").Uint32E(name)
 }
 
-// Uint32D is the same as Uint32E, but returns the default if there is an error.
+// Uint32D is equal to c.Group("").Uint32D(name, _default).
 func (c *Config) Uint32D(name string, _default uint32) uint32 {
-	if value, err := c.Uint32E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Uint32D(name, _default)
 }
 
-// Uint32 is the same as Uint32E, but panic if there is an error.
+// Uint32 is equal to c.Group("").Uint32(name).
 func (c *Config) Uint32(name string) uint32 {
-	value, err := c.Uint32E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Uint32(name)
 }
 
-// Uint64E returns the option value, the type of which is uint64.
-//
-// Return an error if no the option or the type of the option isn't uint64.
+// Uint64E is equal to c.Group("").Uint64E(name).
 func (c *Config) Uint64E(name string) (uint64, error) {
-	v, err := c.getValue(name, uint64Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(uint64), nil
+	return c.Group("").Uint64E(name)
 }
 
-// Uint64D is the same as Uint64E, but returns the default if there is an error.
+// Uint64D is equal to c.Group("").Uint64D(name, _default).
 func (c *Config) Uint64D(name string, _default uint64) uint64 {
-	if value, err := c.Uint64E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Uint64D(name, _default)
 }
 
-// Uint64 is the same as Uint64E, but panic if there is an error.
+// Uint64 is equal to c.Group("").Uint64(name).
 func (c *Config) Uint64(name string) uint64 {
-	value, err := c.Uint64E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Uint64(name)
 }
 
-// Float32E returns the option value, the type of which is float32.
-//
-// Return an error if no the option or the type of the option isn't float32.
+// Float32E is equal to c.Group("").Float32E(name).
 func (c *Config) Float32E(name string) (float32, error) {
-	v, err := c.getValue(name, float32Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(float32), nil
+	return c.Group("").Float32E(name)
 }
 
-// Float32D is the same as Float32E, but returns the default if there is an error.
+// Float32D is equal to c.Group("").Float32D(name, _default).
 func (c *Config) Float32D(name string, _default float32) float32 {
-	if value, err := c.Float32E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Float32D(name, _default)
 }
 
-// Float32 is the same as Float32E, but panic if there is an error.
+// Float32 is equal to c.Group("").Float32(name).
 func (c *Config) Float32(name string) float32 {
-	value, err := c.Float32E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Float32(name)
 }
 
-// Float64E returns the option value, the type of which is float64.
-//
-// Return an error if no the option or the type of the option isn't float64.
+// Float64E is equal to c.Group("").Float64E(name).
 func (c *Config) Float64E(name string) (float64, error) {
-	v, err := c.getValue(name, float64Type)
-	if err != nil {
-		return 0, err
-	}
-	return v.(float64), nil
+	return c.Group("").Float64E(name)
 }
 
-// Float64D is the same as Float64E, but returns the default if there is an error.
+// Float64D is equal to c.Group("").Float64D(name, _default).
 func (c *Config) Float64D(name string, _default float64) float64 {
-	if value, err := c.Float64E(name); err == nil {
-		return value
-	}
-	return _default
+	return c.Group("").Float64D(name, _default)
 }
 
-// Float64 is the same as Float64E, but panic if there is an error.
+// Float64 is equal to c.Group("").Float64(name).
 func (c *Config) Float64(name string) float64 {
-	value, err := c.Float64E(name)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return c.Group("").Float64(name)
 }
