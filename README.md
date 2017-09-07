@@ -18,7 +18,7 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 
 ## Parser
 
-In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See [doc](https://godoc.org/github.com/xgfone/go-config).
+In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See the [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 
 ## Usage
@@ -67,9 +67,9 @@ func main() {
 }
 ```
 
-You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`.
+You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`, which you change it by modifying the value of the variable `IniParserOptName`.
 
-The package has created a global default `Config` by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
+The package has created a global default `Config` created by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
 ```go
 package main
 
