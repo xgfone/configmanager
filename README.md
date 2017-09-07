@@ -1,5 +1,5 @@
 # go-config
-An extensible go configuration manager. The default parsers can parse the CLI arguments and the property file. You can implement and register your parser, and the manager engine will call the parser to parse the config.
+An extensible go configuration. The default parsers can parse the CLI arguments and the property file. You can implement and register your parser, and the configuration engine will call the parser to parse the configuration.
 
 ## Principle of Work
 
@@ -8,11 +8,11 @@ An extensible go configuration manager. The default parsers can parse the CLI ar
 3. Register the other options into the parsers except the CLI parser.
 4. The manager calls the CLI parser to parse the CLI arguments.
 5. The manager calls each other parsers according to the order which are registered.
-    1. Call `GetKeys()` to get the keys of all the options that the parser needs.
+    1. Call the method `GetKeys()` of the parser to get the keys of all the options that the parser needs.
     2. Get the option values by the keys above from the values that has been parsed.
-    3. Call the method `Parse` of the parser with those option values, and get the parsed result.
+    3. Call the method `Parse()` of the parser with those option values, and get the parsed result.
     4. Merge the parsed result together.
-6. Check whether some required options neither have the value nor the default value.
+6. Check whether some required options have neither the parsed value nor the default value.
 
 ## Usage
 ```go
@@ -53,7 +53,29 @@ func main() {
 
 You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the property parser `NewSimplePropertyParser()` and register the CLI option `config_file`.
 
-The package has created a global default `Config` by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`.
+The package has created a global default `Config` by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
+```go
+package main
+
+import (
+	"fmt"
+
+	config "github.com/xgfone/go-config"
+)
+
+var opts = []config.Opt{
+	config.StrOpt("", "ip", nil, true, "the ip address"),
+	config.IntOpt("", "port", 80, true, "the port"),
+}
+
+func main() {
+	config.Conf.RegisterCliOpts(opts)
+	config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
+
+	fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0
+	fmt.Println(config.Conf.Int("port"))  // Output: 80
+}
+```
 
 ## Parser
 
