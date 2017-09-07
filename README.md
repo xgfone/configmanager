@@ -18,7 +18,7 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 
 ## Parser
 
-In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See the [DOC](https://godoc.org/github.com/xgfone/go-config).
+In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 
 ## Usage
@@ -39,11 +39,11 @@ func main() {
 	iniParser := config.NewSimpleIniParser("config-file")
 	conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-	conf.RegisterOpt("", true, config.StrOpt("", "ip", nil, true, "the ip address"))
-	conf.RegisterOpt("", true, config.IntOpt("", "port", 80, false, "the port"))
-	conf.RegisterOpt("", true, config.StrOpt("", "config-file", nil, false,
+	conf.RegisterCliOpt("", config.StrOpt("", "ip", nil, true, "the ip address"))
+	conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
+	conf.RegisterCliOpt("", config.StrOpt("", "config-file", nil, false,
 		"The path of the ini config file."))
-	conf.RegisterOpt("redis", true, config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
+	conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
 		false, "the redis connection url"))
 
 	if err := conf.Parse(nil); err != nil {
@@ -85,7 +85,7 @@ var opts = []config.Opt{
 }
 
 func main() {
-	config.Conf.RegisterOpts("", true, opts)
+	config.Conf.RegisterCliOpts("", opts)
 	config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
 
 	fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0

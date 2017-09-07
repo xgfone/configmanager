@@ -17,7 +17,7 @@ func NewDefault() *Config {
 	cli := NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
 	ini := NewSimpleIniParser(IniParserOptName)
 	conf := NewConfig(cli).AddParser(ini)
-	conf.RegisterOpt("", true, StrOpt("", IniParserOptName, nil, false,
+	conf.RegisterCliOpt("", StrOpt("", IniParserOptName, nil, false,
 		"The path of the ini config file."))
 	return conf
 }

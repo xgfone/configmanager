@@ -19,9 +19,9 @@ func ExampleConfig() {
 		StrOpt("", "test1", "test1", true, "test2"),
 	}
 
-	Conf.RegisterOpts("", true, cliOpts1)
-	Conf.RegisterOpts("cli", true, cliOpts2)
-	Conf.RegisterOpts("group", false, opts)
+	Conf.RegisterCliOpts("", cliOpts1)
+	Conf.RegisterCliOpts("cli", cliOpts2)
+	Conf.RegisterOpts("group", opts)
 
 	args := []string{"-cli_yes"}
 	// args = nil // You can pass nil to get the arguments from the command line.

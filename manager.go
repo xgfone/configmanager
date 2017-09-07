@@ -230,12 +230,54 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
+// RegisterCliOpt registers the option into the group of `name`.
+//
+// It registers the option into not only all the common parsers but also
+// the CLI parser.
+//
+// If the group name is "", it's regarded as the default group.
+func (c *Config) RegisterCliOpt(group string, opt Opt) {
+	c.registerOpt(group, true, opt)
+}
+
+// RegisterCliOpts registers the options into the group of `name`.
+//
+// It registers the options into not only all the common parsers but also
+// the CLI parser.
+//
+// If the group name is "", it's regarded as the default group.
+func (c *Config) RegisterCliOpts(group string, opts []Opt) {
+	for _, opt := range opts {
+		c.RegisterCliOpt(group, opt)
+	}
+}
+
 // RegisterOpt registers the option into the group of `name`.
+//
+// It only registers the option into all the common parsers, not the CLI parser.
+//
+// If the group name is "", it's regarded as the default group.
+func (c *Config) RegisterOpt(group string, opt Opt) {
+	c.registerOpt(group, false, opt)
+}
+
+// RegisterOpts registers the options into the group of `name`.
+//
+// It only registers the options into all the common parsers, not the CLI parser.
+//
+// If the group name is "", it's regarded as the default group.
+func (c *Config) RegisterOpts(group string, opts []Opt) {
+	for _, opt := range opts {
+		c.RegisterOpt(group, opt)
+	}
+}
+
+// registerOpt registers the option into the group of `name`.
 //
 // If the group name is "", it's regarded as the default group.
 //
 // The first argument cli indicates whether the option is as the CLI option, too.
-func (c *Config) RegisterOpt(group string, cli bool, opt Opt) {
+func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 	if c.parsed {
 		panic(ErrParsed)
 	}
@@ -248,17 +290,6 @@ func (c *Config) RegisterOpt(group string, cli bool, opt Opt) {
 	}
 
 	g.registerOpt(cli, opt)
-}
-
-// RegisterOpts registers many options into the group of `name` once.
-//
-// If the group name is "", it's regarded as the default group.
-//
-// The first argument cli indicates whether the option is as the CLI option, too.
-func (c *Config) RegisterOpts(group string, cli bool, opts []Opt) {
-	for _, opt := range opts {
-		c.RegisterOpt(group, cli, opt)
-	}
 }
 
 func (c *Config) getGroupName(name string) string {
