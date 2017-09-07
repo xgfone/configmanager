@@ -32,11 +32,11 @@ func main() {
 	propertyParser := config.NewSimplePropertyParser("config_file")
 	conf := config.NewConfig(cliParser).AddParser(propertyParser)
 
-	conf.RegisterCliOpt(config.NewStrOpt("", "ip", nil, true, "the ip address"))
-	conf.RegisterCliOpt(config.NewIntOpt("", "port", 80, false, "the port"))
-	conf.RegisterOpt(config.NewStrOpt("", "redis", "redis://127.0.0.1:6379/0",
+	conf.RegisterCliOpt(config.StrOpt("", "ip", nil, true, "the ip address"))
+	conf.RegisterCliOpt(config.IntOpt("", "port", 80, false, "the port"))
+	conf.RegisterOpt(config.StrOpt("", "redis", "redis://127.0.0.1:6379/0",
 		false, "the redis connection url"))
-	conf.RegisterCliOpt(config.NewStrOpt("", "config_file", nil, false,
+	conf.RegisterCliOpt(config.StrOpt("", "config_file", nil, false,
 		"The path of the config file."))
 
 	if err := conf.Parse(nil); err != nil {

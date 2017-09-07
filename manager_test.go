@@ -3,12 +3,12 @@ package config
 import "fmt"
 
 func ExampleConfig() {
-	Conf.RegisterCliOpt(NewStrOpt("", "required", nil, false, "required"))
-	Conf.RegisterCliOpt(NewStrOpt("", "optional", "optional", false, "optional"))
-	Conf.RegisterCliOpt(NewIntOpt("", "int1", nil, false, "required int"))
-	Conf.RegisterCliOpt(NewIntOpt("", "int2", 789, false, "optional int"))
-	Conf.RegisterCliOpt(NewBoolOpt("", "yes", nil, false, "test bool option"))
-	Conf.RegisterCliOpt(NewBoolOpt("", "no", nil, false, "test bool option"))
+	Conf.RegisterCliOpt(StrOpt("", "required", nil, false, "required"))
+	Conf.RegisterCliOpt(StrOpt("", "optional", "optional", false, "optional"))
+	Conf.RegisterCliOpt(IntOpt("", "int1", nil, false, "required int"))
+	Conf.RegisterCliOpt(IntOpt("", "int2", 789, false, "optional int"))
+	Conf.RegisterCliOpt(BoolOpt("", "yes", nil, false, "test bool option"))
+	Conf.RegisterCliOpt(BoolOpt("", "no", nil, false, "test bool option"))
 
 	args := []string{"-yes"}
 	if err := Conf.Parse(args); err != nil {

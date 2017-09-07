@@ -18,7 +18,7 @@ func NewDefault() *Config {
 	cli := NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
 	prop := NewSimplePropertyParser(PropertyParserOptName)
 	conf := NewConfig(cli).AddParser(prop)
-	conf.RegisterCliOpt(NewStrOpt("", PropertyParserOptName, nil, false,
+	conf.RegisterCliOpt(StrOpt("", PropertyParserOptName, nil, false,
 		"The path of the property config file."))
 	return conf
 }
