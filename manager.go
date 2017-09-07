@@ -20,7 +20,6 @@ type Opt interface {
 	GetShort() string
 	GetHelp() string
 	GetDefault() interface{}
-	IsRequired() bool
 	IsBool() bool
 	Parse(string) (interface{}, error)
 }

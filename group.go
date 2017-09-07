@@ -62,11 +62,7 @@ func (g OptGroup) checkRequiredOption() error {
 				continue
 			}
 
-			if !opt.opt.IsRequired() {
-				continue
-			}
-
-			return fmt.Errorf("the option '%s' of the group '%s' is required, but has no value",
+			return fmt.Errorf("the option '%s' of the group '%s' has no value",
 				name, g.name)
 		}
 	}

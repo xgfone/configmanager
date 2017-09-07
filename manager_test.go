@@ -4,19 +4,19 @@ import "fmt"
 
 func ExampleConfig() {
 	cliOpts1 := []Opt{
-		StrOpt("", "required", nil, false, "required"),
-		IntOpt("", "int1", nil, false, "required int"),
-		BoolOpt("", "no", nil, false, "test bool option"),
+		StrOpt("", "required", nil, "required"),
+		IntOpt("", "int1", nil, "required int"),
+		BoolOpt("", "no", nil, "test bool option"),
 	}
 
 	cliOpts2 := []Opt{
-		IntOpt("", "int2", 789, false, "optional int"),
-		BoolOpt("", "yes", nil, false, "test bool option"),
-		StrOpt("", "optional", "optional", false, "optional"),
+		IntOpt("", "int2", 789, "optional int"),
+		BoolOpt("", "yes", nil, "test bool option"),
+		StrOpt("", "optional", "optional", "optional"),
 	}
 
 	opts := []Opt{
-		StrOpt("", "test1", "test1", true, "test2"),
+		StrOpt("", "test1", "test1", "test2"),
 	}
 
 	Conf.RegisterCliOpts("", cliOpts1)

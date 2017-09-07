@@ -57,26 +57,24 @@ var optTypeMap = map[optType]string{
 }
 
 type baseOpt struct {
-	Name     string
-	Help     string
-	Short    string
-	Required bool
-	Default  interface{}
+	Name    string
+	Help    string
+	Short   string
+	Default interface{}
 
 	_type optType
 }
 
 var _ Opt = baseOpt{}
 
-func newBaseOpt(short, name string, _default interface{}, required bool,
-	help string, optType optType) baseOpt {
+func newBaseOpt(short, name string, _default interface{}, help string,
+	optType optType) baseOpt {
 	o := baseOpt{
-		Short:    short,
-		Name:     name,
-		Help:     help,
-		Required: required,
-		Default:  _default,
-		_type:    optType,
+		Short:   short,
+		Name:    name,
+		Help:    help,
+		Default: _default,
+		_type:   optType,
 	}
 	o.GetDefault()
 	return o
@@ -90,11 +88,6 @@ func (o baseOpt) GetName() string {
 // GetShort returns the shorthand name of the option.
 func (o baseOpt) GetShort() string {
 	return o.Short
-}
-
-// IsRequired returns ture if the option must have the value, or false.
-func (o baseOpt) IsRequired() bool {
-	return o.Required
 }
 
 func (o baseOpt) IsBool() bool {
@@ -200,110 +193,110 @@ func (o baseOpt) Parse(data string) (v interface{}, err error) {
 //
 // Notice: the type of the default value must be bool or nil.
 // If no default, it's nil.
-func BoolOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, boolType)
+func BoolOpt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, boolType)
 }
 
 // StrOpt return a new string option.
 //
 // Notice: the type of the default value must be string or nil.
 // If no default, it's nil.
-func StrOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, stringType)
+func StrOpt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, stringType)
 }
 
 // IntOpt return a new int option.
 //
 // Notice: the type of the default value must be int or nil.
 // If no default, it's nil.
-func IntOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, intType)
+func IntOpt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, intType)
 }
 
 // Int8Opt return a new int8 option.
 //
 // Notice: the type of the default value must be int8 or nil.
 // If no default, it's nil.
-func Int8Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, int8Type)
+func Int8Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, int8Type)
 }
 
 // Int16Opt return a new int16 option.
 //
 // Notice: the type of the default value must be int16 or nil.
 // If no default, it's nil.
-func Int16Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, int16Type)
+func Int16Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, int16Type)
 }
 
 // Int32Opt return a new int32 option.
 //
 // Notice: the type of the default value must be int32 or nil.
 // If no default, it's nil.
-func Int32Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, int32Type)
+func Int32Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, int32Type)
 }
 
 // Int64Opt return a new int64 option.
 //
 // Notice: the type of the default value must be int64 or nil.
 // If no default, it's nil.
-func Int64Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, int64Type)
+func Int64Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, int64Type)
 }
 
 // UintOpt return a new uint option.
 //
 // Notice: the type of the default value must be uint or nil.
 // If no default, it's nil.
-func UintOpt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, uintType)
+func UintOpt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, uintType)
 }
 
 // Uint8Opt return a new uint8 option.
 //
 // Notice: the type of the default value must be uint8 or nil.
 // If no default, it's nil.
-func Uint8Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, uint8Type)
+func Uint8Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, uint8Type)
 }
 
 // Uint16Opt return a new uint16 option.
 //
 // Notice: the type of the default value must be uint16 or nil.
 // If no default, it's nil.
-func Uint16Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, uint16Type)
+func Uint16Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, uint16Type)
 }
 
 // Uint32Opt return a new uint32 option.
 //
 // Notice: the type of the default value must be uint32 or nil.
 // If no default, it's nil.
-func Uint32Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, uint32Type)
+func Uint32Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, uint32Type)
 }
 
 // Uint64Opt return a new uint64 option.
 //
 // Notice: the type of the default value must be uint64 or nil.
 // If no default, it's nil.
-func Uint64Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, uint64Type)
+func Uint64Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, uint64Type)
 }
 
 // Float32Opt return a new float32 option.
 //
 // Notice: the type of the default value must be float32 or nil.
 // If no default, it's nil.
-func Float32Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, float32Type)
+func Float32Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, float32Type)
 }
 
 // Float64Opt return a new float64 option.
 //
 // Notice: the type of the default value must be float64 or nil.
 // If no default, it's nil.
-func Float64Opt(short, name string, _default interface{}, required bool, help string) Opt {
-	return newBaseOpt(short, name, _default, required, help, float64Type)
+func Float64Opt(short, name string, _default interface{}, help string) Opt {
+	return newBaseOpt(short, name, _default, help, float64Type)
 }
