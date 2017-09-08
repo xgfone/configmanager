@@ -28,16 +28,16 @@ func bool2Int(b bool) int64 {
 
 // ToBool does the best to convert a certain value to bool
 //
-// For "t", "1", "true", "True", "TRUE", it's true.
-// For "f", "0", "false", "False", "FALSE", it's false.
+// For "t", "T", "1", "true", "True", "TRUE", it's true.
+// For "f", "F", "0", "false", "False", "FALSE", it's false.
 func ToBool(v interface{}) (bool, error) {
 	switch v.(type) {
 	case string:
 		_v := v.(string)
 		switch _v {
-		case "t", "1", "true", "True", "TRUE":
+		case "t", "T", "1", "true", "True", "TRUE":
 			return true, nil
-		case "f", "0", "false", "False", "FALSE":
+		case "f", "F", "0", "false", "False", "FALSE":
 			return false, nil
 		default:
 			return false, fmt.Errorf("unrecognized bool string: %s", _v)
