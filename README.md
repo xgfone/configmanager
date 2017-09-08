@@ -4,16 +4,19 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 
 ## Principle of Work
 
-1. Start to parse the configuration.
-2. Get all the registered CLI options.
-3. Call the CLI parser with the CLI optons and arguments to parse.
-4. Get all the registered common options.
-5. Call each other parsers according to the order that they are registered.
-    1. Call the method `GetKeys()` of the parser to get the keys of all the configurations that the parser needs.
-    2. Get the values of the keys above from the default group that has been parsed.
-    3. Call the method `Parse()` of the parser with the registered options and the configurations, and get the parsed result.
-    4. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
-6. Check whether some required options have neither the parsed value nor the default value.
+1. Create a `Config` engine.
+2. Register the CLI or common options into `Config`.
+3. Call the method `Parse()` to parse the options.
+    1. Start to parse the configuration.
+    2. Get all the registered CLI options.
+    3. Call the CLI parser with the CLI optons and arguments to parse.
+    4. Get all the registered common options.
+    5. Call each other parsers according to the order that they are registered.
+        1. Call the method `GetKeys()` of the parser to get the keys of all the configurations that the parser needs.
+        2. Get the values of the keys above from the default group that has been parsed.
+        3. Call the method `Parse()` of the parser with the registered options and the configurations, and get the parsed result.
+        4. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
+    6. Check whether some required options have neither the parsed value nor the default value.
 
 
 ## Parser
@@ -26,46 +29,46 @@ In order to deveplop a new CLI parser, you just need to implement the interface 
 package main
 
 import (
-	"flag"
-	"fmt"
-	"os"
-	"path/filepath"
+    "flag"
+    "fmt"
+    "os"
+    "path/filepath"
 
-	config "github.com/xgfone/go-config"
+    config "github.com/xgfone/go-config"
 )
 
 func main() {
-	cliParser := config.NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
-	iniParser := config.NewSimpleIniParser("config-file")
-	conf := config.NewConfig(cliParser).AddParser(iniParser)
+    cliParser := config.NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
+    iniParser := config.NewSimpleIniParser("config-file")
+    conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-	validators := []Validator{NewStrLenValidator(7, 15)}
-	ipOpt := config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators)
-	conf.RegisterCliOpt("", ipOpt)
-	conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
-	conf.RegisterCliOpt("", config.StrOpt("", "config-file", nil, false,
-		"The path of the ini config file."))
-	conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
-		false, "the redis connection url"))
+    validators := []Validator{NewStrLenValidator(7, 15)}
+    ipOpt := config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators)
+    conf.RegisterCliOpt("", ipOpt)
+    conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
+    conf.RegisterCliOpt("", config.StrOpt("", "config-file", nil, false,
+        "The path of the ini config file."))
+    conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
+        false, "the redis connection url"))
 
-	if err := conf.Parse(nil); err != nil {
-		conf.Audit() // View the internal information.
-		fmt.Println(err)
-		return
-	}
+    if err := conf.Parse(nil); err != nil {
+        conf.Audit() // View the internal information.
+        fmt.Println(err)
+        return
+    }
 
-	fmt.Println(conf.String("ip"))
-	fmt.Println(conf.Int("port"))
-	fmt.Println(conf.Group("redis").String("conn"))
-	fmt.Println(conf.Args)
+    fmt.Println(conf.String("ip"))
+    fmt.Println(conf.Int("port"))
+    fmt.Println(conf.Group("redis").String("conn"))
+    fmt.Println(conf.Args)
 
-	// Execute:
-	//     PROGRAM -ip 0.0.0.0 aa bb cc
-	//
-	// Output:
-	//     0.0.0.0
-	//     80
-	//     [aa bb cc]
+    // Execute:
+    //     PROGRAM -ip 0.0.0.0 aa bb cc
+    //
+    // Output:
+    //     0.0.0.0
+    //     80
+    //     [aa bb cc]
 }
 ```
 
@@ -76,23 +79,23 @@ The package has created a global default `Config` created by `NewDefault()` like
 package main
 
 import (
-	"fmt"
+    "fmt"
 
-	config "github.com/xgfone/go-config"
+    config "github.com/xgfone/go-config"
 )
 
 var validators = []Validator{NewStrLenValidator(7, 15)}
 
 var opts = []config.Opt{
-	config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators),
-	config.IntOpt("", "port", 80, true, "the port"),
+    config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators),
+    config.IntOpt("", "port", 80, true, "the port"),
 }
 
 func main() {
-	config.Conf.RegisterCliOpts("", opts)
-	config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
+    config.Conf.RegisterCliOpts("", opts)
+    config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
 
-	fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0
-	fmt.Println(config.Conf.Int("port"))  // Output: 80
+    fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0
+    fmt.Println(config.Conf.Int("port"))  // Output: 80
 }
 ```
