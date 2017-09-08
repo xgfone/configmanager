@@ -210,3 +210,24 @@ var emailV = emailValidator{}
 func NewEmailValidator() Validator {
 	return emailV
 }
+
+type addressValidator struct{}
+
+func (a addressValidator) Validate(v interface{}) error {
+	s, err := toString(v)
+	if err != nil {
+		return err
+	}
+	_, _, err = net.SplitHostPort(s)
+	return err
+}
+
+var addressV = addressValidator{}
+
+// NewAddressValidator returns a validator to validate whether an address is
+// like "host:port", "host%zone:port", "[host]:port" or "[host%zone]:port".
+//
+// This validator uses net.SplitHostPort() to validate it.
+func NewAddressValidator() Validator {
+	return addressV
+}
