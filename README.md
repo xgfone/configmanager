@@ -5,14 +5,14 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 ## Principle of Work
 
 1. Start to parse the configuration.
-2. Register the CLI options into all the parsers.
-3. Register the other options into the parsers except the CLI parser.
-4. The manager calls the CLI parser to parse the CLI arguments.
-5. The manager calls each other parsers according to the order which are registered.
-    1. Call the method `GetKeys()` of the parser to get the keys of all the options that the parser needs.
-    2. Get the option values by the keys above from the values that has been parsed.
-    3. Call the method `Parse()` of the parser with those option values, and get the parsed result.
-    4. Merge the parsed result together.
+2. Get all the registered CLI options.
+3. Call the CLI parser with the CLI optons and arguments to parse.
+4. Get all the registered common options.
+5. Call each other parsers according to the order that they are registered.
+    1. Call the method `GetKeys()` of the parser to get the keys of all the configurations that the parser needs.
+    2. Get the values of the keys above from the default group that has been parsed.
+    3. Call the method `Parse()` of the parser with the registered options and the configurations, and get the parsed result.
+    4. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
 6. Check whether some required options have neither the parsed value nor the default value.
 
 
@@ -39,7 +39,9 @@ func main() {
 	iniParser := config.NewSimpleIniParser("config-file")
 	conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-	conf.RegisterCliOpt("", config.StrOpt("", "ip", nil, true, "the ip address"))
+	validators := []Validator{NewStrLenValidator(7, 15)}
+	ipOpt := config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators)
+	conf.RegisterCliOpt("", ipOpt)
 	conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
 	conf.RegisterCliOpt("", config.StrOpt("", "config-file", nil, false,
 		"The path of the ini config file."))
@@ -79,8 +81,10 @@ import (
 	config "github.com/xgfone/go-config"
 )
 
+var validators = []Validator{NewStrLenValidator(7, 15)}
+
 var opts = []config.Opt{
-	config.StrOpt("", "ip", nil, true, "the ip address"),
+	config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators),
 	config.IntOpt("", "port", 80, true, "the port"),
 }
 
