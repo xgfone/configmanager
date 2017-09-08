@@ -3,8 +3,9 @@ package config
 import "fmt"
 
 func ExampleConfig() {
+	validators := []Validator{NewStrLenValidator(1, 10)}
 	cliOpts1 := []Opt{
-		StrOpt("", "required", "", "required").SetValidators([]Validator{NewStrLenValidator(1, 10)}),
+		StrOpt("", "required", "", "required").SetValidators(validators),
 		BoolOpt("", "yes", true, "test bool option"),
 	}
 
@@ -25,7 +26,7 @@ func ExampleConfig() {
 	// Conf.IsRequired = false
 
 	args := []string{"-cli_no=0", "-required", "required"}
-	// args = nil // You can pass nil to get the arguments from the command line.
+	// args = nil // You can pass nil.
 	if err := Conf.Parse(args); err != nil {
 		fmt.Println(err)
 		return

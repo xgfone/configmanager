@@ -24,7 +24,7 @@ type Parser interface {
 
 	// Parse the value of the registered options.
 	//
-	// The first argument, defaultGroupName, is the name of the default group.
+	// The first argument, groupName, is the name of the default group.
 	//
 	// The second argument, opts, is the parsed option information. The key is
 	// the group name, and the value is the parsed option list.
@@ -47,7 +47,7 @@ type Parser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	Parse(defaultGroupName string, opts map[string][]Opt, conf map[string]string) (
+	Parse(groupName string, opts map[string][]Opt, conf map[string]string) (
 		results map[string]map[string]string, err error)
 }
 
@@ -66,7 +66,7 @@ type CliParser interface {
 
 	// Parse the value of the registered CLI options.
 	//
-	// The first argument, defaultGroupName, is the name of the default group.
+	// The first argument, groupName, is the name of the default group.
 	//
 	// The second argument, opts, is the parsed option information. The key is
 	// the group name, and the value is the parsed option list.
@@ -85,7 +85,7 @@ type CliParser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	Parse(defaultGroupName string, opts map[string][]Opt, arguments []string) (
+	Parse(groupName string, opts map[string][]Opt, arguments []string) (
 		results map[string]map[string]string, args []string, err error)
 }
 
@@ -224,7 +224,8 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 		}
 
 		// Ignore the line comments starting with "#" or "//".
-		if (line[0] == '#') || (len(line) > 1 && line[0] == '/' && line[1] == '/') {
+		if (line[0] == '#') ||
+			(len(line) > 1 && line[0] == '/' && line[1] == '/') {
 			continue
 		}
 

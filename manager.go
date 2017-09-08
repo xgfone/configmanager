@@ -154,7 +154,8 @@ func (c *Config) Parse(arguments []string) (err error) {
 	for name, group := range c.groups {
 		groupOpts[name] = group.getAllOpts(true)
 	}
-	if groups, args, err := c.cli.Parse(c.defaultGroup, groupOpts, arguments); err == nil {
+	if groups, args, err := c.cli.Parse(c.defaultGroup, groupOpts,
+		arguments); err == nil {
 		for gname, opts := range groups {
 			if group, ok := c.groups[gname]; ok {
 				if err = group.setOptions(opts, c.NotEmpty); err != nil {
@@ -222,8 +223,9 @@ func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
 		if !required {
 			continue
 		}
-		err = fmt.Errorf("the option %s is missing, which is reqired by the parser %s",
-			key, name)
+
+		emsg := "the option %s is missing, which is reqired by the parser %s"
+		err = fmt.Errorf(emsg, key, name)
 		return
 	}
 
@@ -254,20 +256,20 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
-// RegisterCliOpt registers the option into the group of `name`.
+// RegisterCliOpt registers the option into the group.
 //
-// It registers the option into not only all the common parsers but also
-// the CLI parser.
+// It registers the option to not only all the common parsers but also the CLI
+// parser.
 //
 // If the group name is "", it's regarded as the default group.
 func (c *Config) RegisterCliOpt(group string, opt Opt) {
 	c.registerOpt(group, true, opt)
 }
 
-// RegisterCliOpts registers the options into the group of `name`.
+// RegisterCliOpts registers the options into the group.
 //
-// It registers the options into not only all the common parsers but also
-// the CLI parser.
+// It registers the options to not only all the common parsers but also the CLI
+// parser.
 //
 // If the group name is "", it's regarded as the default group.
 func (c *Config) RegisterCliOpts(group string, opts []Opt) {
@@ -276,18 +278,18 @@ func (c *Config) RegisterCliOpts(group string, opts []Opt) {
 	}
 }
 
-// RegisterOpt registers the option into the group of `name`.
+// RegisterOpt registers the option into the group.
 //
-// It only registers the option into all the common parsers, not the CLI parser.
+// It only registers the option to all the common parsers, not the CLI parser.
 //
 // If the group name is "", it's regarded as the default group.
 func (c *Config) RegisterOpt(group string, opt Opt) {
 	c.registerOpt(group, false, opt)
 }
 
-// RegisterOpts registers the options into the group of `name`.
+// RegisterOpts registers the options into the group.
 //
-// It only registers the options into all the common parsers, not the CLI parser.
+// It only registers the options to all the common parsers, not the CLI parser.
 //
 // If the group name is "", it's regarded as the default group.
 func (c *Config) RegisterOpts(group string, opts []Opt) {
@@ -296,11 +298,12 @@ func (c *Config) RegisterOpts(group string, opts []Opt) {
 	}
 }
 
-// registerOpt registers the option into the group of `name`.
+// registerOpt registers the option into the group.
 //
 // If the group name is "", it's regarded as the default group.
 //
-// The first argument cli indicates whether the option is as the CLI option, too.
+// The first argument, cli, indicates whether the option is as the CLI option,
+// too.
 func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 	if c.parsed {
 		panic(ErrParsed)

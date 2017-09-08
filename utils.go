@@ -40,7 +40,7 @@ func ToBool(v interface{}) (bool, error) {
 		case "f", "0", "false", "False", "FALSE":
 			return false, nil
 		default:
-			return false, fmt.Errorf("unrecognized string when converting to bool: %s", _v)
+			return false, fmt.Errorf("unrecognized bool string: %s", _v)
 		}
 	}
 	return !IsZero(v), nil
@@ -116,7 +116,8 @@ func ToString(_v interface{}) (v string, err error) {
 		v = _v.(string)
 	case []byte:
 		v = string(_v.([]byte))
-	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32,
+		uint64:
 		v = fmt.Sprintf("%d", _v)
 	case float32, float64:
 		v = fmt.Sprintf("%f", _v)

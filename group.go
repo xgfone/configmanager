@@ -38,12 +38,15 @@ func (g OptGroup) getAllOpts(cli bool) []Opt {
 	return opts
 }
 
-func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool) (err error) {
+func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool) (
+	err error) {
 	if notEmpty {
 		if value == nil {
-			return fmt.Errorf("the value of %s in the group %s is nil", name, g.name)
+			return fmt.Errorf("the value of %s in the group %s is nil",
+				name, g.name)
 		} else if IsZero(value) {
-			return fmt.Errorf("the value of %s in the group %s is ZERO", name, g.name)
+			return fmt.Errorf("the value of %s in the group %s is ZERO",
+				name, g.name)
 		}
 	}
 
@@ -113,7 +116,8 @@ func (g OptGroup) checkRequiredOption(notEmpty bool) (err error) {
 
 // registerOpt registers the option into the group.
 //
-// The first argument cli indicates whether the option is as the CLI option, too.
+// The first argument, cli, indicates whether the option is as the CLI option,
+// too.
 func (g OptGroup) registerOpt(cli bool, opt Opt) {
 	if _, ok := g.opts[opt.GetName()]; ok {
 		panic(fmt.Errorf("the option %s has been registered into the group %s",
@@ -124,7 +128,8 @@ func (g OptGroup) registerOpt(cli bool, opt Opt) {
 
 // registerOpts registers many options into the group once.
 //
-// The first argument cli indicates whether the option is as the CLI option, too.
+// The first argument, cli, indicates whether the option is as the CLI option,
+// too.
 func (g OptGroup) registerOpts(cli bool, opts []Opt) {
 	for _, opt := range opts {
 		g.registerOpt(cli, opt)
@@ -204,7 +209,7 @@ func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("don't support the type %s", _type)
 	}
-	return nil, fmt.Errorf("the type of the option %s in the group %s is not %s",
+	return nil, fmt.Errorf("the option %s in the group %s is not the type %s",
 		name, g.name, _type)
 }
 
@@ -555,7 +560,8 @@ func (g OptGroup) Float32E(name string) (float32, error) {
 	return v.(float32), nil
 }
 
-// Float32D is the same as Float32E, but returns the default if there is an error.
+// Float32D is the same as Float32E, but returns the default value if there is
+// an error.
 func (g OptGroup) Float32D(name string, _default float32) float32 {
 	if value, err := g.Float32E(name); err == nil {
 		return value
@@ -583,7 +589,8 @@ func (g OptGroup) Float64E(name string) (float64, error) {
 	return v.(float64), nil
 }
 
-// Float64D is the same as Float64E, but returns the default if there is an error.
+// Float64D is the same as Float64E, but returns the default value if there is
+// an error.
 func (g OptGroup) Float64D(name string, _default float64) float64 {
 	if value, err := g.Float64E(name); err == nil {
 		return value

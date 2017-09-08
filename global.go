@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 )
 
-// IniParserOptName is the option name to indicate the path of the ini config file.
+// IniParserOptName is the name of the option to indicate the path of
+// the ini config file.
 var IniParserOptName = "config-file"
 
 // Conf is the global config manager.
