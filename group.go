@@ -75,12 +75,13 @@ func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool) (
 	return
 }
 
-func (g OptGroup) setOptions(options map[string]string, notEmpty bool) error {
+func (g OptGroup) setOptions(options map[string]interface{}, notEmpty bool) error {
 	for name, opt := range g.opts {
 		if value, ok := options[name]; ok {
 			v, err := opt.opt.Parse(value)
 			if err != nil {
-				return err
+				return fmt.Errorf("can't parse the option %s in group %s: %s",
+					name, g.name, err)
 			}
 			if err := g.setOptValue(name, v, notEmpty); err != nil {
 				return err

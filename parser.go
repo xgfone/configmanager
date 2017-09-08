@@ -48,7 +48,7 @@ type Parser interface {
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
 	Parse(defaultGroupName string, opts map[string][]Opt,
-		conf map[string]interface{}) (results map[string]map[string]string,
+		conf map[string]interface{}) (results map[string]map[string]interface{},
 		err error)
 }
 
@@ -79,7 +79,10 @@ type CliParser interface {
 	//
 	// For the first result, a map, the key is the group name, and the value
 	// is the key-value pairs about the options defined in that group, which
-	// the option key is the name of the registered option.
+	// the option key is the name of the registered option. NOTICE: the parser
+	// can parse the value of the option to a special type by calling the
+	// mehtod Parse() of the option, but it's not necessary. Whether the parser
+	// calls opt.Parse(value) or not, the configuration engine will call it.
 	//
 	// The second result is the rest of the CLI arguments, which are not the
 	// options starting with the prefix "-", "--" or others, etc.
@@ -87,7 +90,7 @@ type CliParser interface {
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
 	Parse(defaultGroupName string, opts map[string][]Opt, arguments []string) (
-		results map[string]map[string]string, args []string, err error)
+		results map[string]map[string]interface{}, args []string, err error)
 }
 
 type flagParser struct {
@@ -111,7 +114,7 @@ func (f flagParser) Name() string {
 }
 
 func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
-	results map[string]map[string]string, args []string, err error) {
+	results map[string]map[string]interface{}, args []string, err error) {
 	// Register the options into flag.FlagSet.
 	flagSet := flag.NewFlagSet(f.name, f.errhandler)
 	name2group := make(map[string]string, 8)
@@ -144,12 +147,12 @@ func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
 
 	// Acquire the result.
 	args = flagSet.Args()
-	results = make(map[string]map[string]string, len(name2group))
+	results = make(map[string]map[string]interface{}, len(name2group))
 	flagSet.Visit(func(fg *flag.Flag) {
 		if group, ok := results[name2group[fg.Name]]; ok {
 			group[name2opt[fg.Name]] = fg.Value.String()
 		} else {
-			results[name2group[fg.Name]] = map[string]string{
+			results[name2group[fg.Name]] = map[string]interface{}{
 				name2opt[fg.Name]: fg.Value.String(),
 			}
 		}
@@ -187,7 +190,7 @@ func (p iniParser) GetKeys() map[string]bool {
 }
 
 func (p iniParser) Parse(_default string, opts map[string][]Opt,
-	conf map[string]interface{}) (results map[string]map[string]string,
+	conf map[string]interface{}) (results map[string]map[string]interface{},
 	err error) {
 	// Read the content of the config file.
 	filename, ok := conf[p.optName].(string)
@@ -214,8 +217,8 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 	}
 
 	// Parse the config file.
-	group := make(map[string]string, 8)
-	results = make(map[string]map[string]string, len(options))
+	group := make(map[string]interface{}, 8)
+	results = make(map[string]map[string]interface{}, len(options))
 	results[_default] = group
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
@@ -239,7 +242,7 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 				return nil, fmt.Errorf("the group is empty")
 			}
 			if group = results[gname]; group == nil {
-				group = make(map[string]string, 4)
+				group = make(map[string]interface{}, 4)
 				results[gname] = group
 			}
 			continue

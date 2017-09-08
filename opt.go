@@ -155,7 +155,7 @@ func (o baseOpt) GetDefault() interface{} {
 }
 
 // Parse parses the value of the option to a certain type.
-func (o baseOpt) Parse(data string) (v interface{}, err error) {
+func (o baseOpt) Parse(data interface{}) (v interface{}, err error) {
 	switch o._type {
 	case boolType:
 		return ToBool(data)

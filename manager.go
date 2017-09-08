@@ -21,7 +21,7 @@ type Opt interface {
 	GetHelp() string
 	GetDefault() interface{}
 	IsBool() bool
-	Parse(string) (interface{}, error)
+	Parse(interface{}) (interface{}, error)
 }
 
 // Validator is an interface to validate whether the value v is valid.
