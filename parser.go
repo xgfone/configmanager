@@ -24,7 +24,7 @@ type Parser interface {
 
 	// Parse the value of the registered options.
 	//
-	// The first argument, groupName, is the name of the default group.
+	// The first argument, defaultGroupName, is the name of the default group.
 	//
 	// The second argument, opts, is the parsed option information. The key is
 	// the group name, and the value is the parsed option list.
@@ -47,8 +47,9 @@ type Parser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	Parse(groupName string, opts map[string][]Opt, conf map[string]string) (
-		results map[string]map[string]string, err error)
+	Parse(defaultGroupName string, opts map[string][]Opt,
+		conf map[string]interface{}) (results map[string]map[string]string,
+		err error)
 }
 
 // CliParser is an interface to parse the CLI arguments.
@@ -66,7 +67,7 @@ type CliParser interface {
 
 	// Parse the value of the registered CLI options.
 	//
-	// The first argument, groupName, is the name of the default group.
+	// The first argument, defaultGroupName, is the name of the default group.
 	//
 	// The second argument, opts, is the parsed option information. The key is
 	// the group name, and the value is the parsed option list.
@@ -85,7 +86,7 @@ type CliParser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	Parse(groupName string, opts map[string][]Opt, arguments []string) (
+	Parse(defaultGroupName string, opts map[string][]Opt, arguments []string) (
 		results map[string]map[string]string, args []string, err error)
 }
 
@@ -186,12 +187,14 @@ func (p iniParser) GetKeys() map[string]bool {
 }
 
 func (p iniParser) Parse(_default string, opts map[string][]Opt,
-	conf map[string]string) (results map[string]map[string]string, err error) {
+	conf map[string]interface{}) (results map[string]map[string]string,
+	err error) {
 	// Read the content of the config file.
-	filename, ok := conf[p.optName]
-	if !ok || len(filename) == 0 {
+	filename, ok := conf[p.optName].(string)
+	if !ok || filename == "" {
 		return
 	}
+
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return

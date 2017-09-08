@@ -203,23 +203,19 @@ func (c *Config) Parse(arguments []string) (err error) {
 }
 
 func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
-	args map[string]string, err error) {
+	args map[string]interface{}, err error) {
 	if len(keys) == 0 {
 		return
 	}
 
 	group := c.Group(c.defaultGroup)
-	args = make(map[string]string, len(keys))
+	args = make(map[string]interface{}, len(keys))
 	for key, required := range keys {
 		if v := group.Value(key); v != nil {
-			if s, ok := v.(string); ok {
-				args[key] = s
-				continue
-			}
-			err = fmt.Errorf("the option %s in the default group is not string",
-				key)
-			return
+			args[key] = v
+			continue
 		}
+
 		if !required {
 			continue
 		}
