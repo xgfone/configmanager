@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 )
 
 var (
@@ -57,4 +58,25 @@ func (e notEmptyStrValidator) Validate(v interface{}) error {
 // not be an empty string.
 func NewStrNotEmptyValidator() Validator {
 	return notEmptyStrValidator{}
+}
+
+type urlValidator struct{}
+
+func (u urlValidator) Validate(v interface{}) error {
+	if v == nil {
+		return fmt.Errorf("the url is nil")
+	}
+
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("the url is not string")
+	}
+
+	_, err := url.Parse(s)
+	return err
+}
+
+// NewURLValidator returns a validator to validate whether a url is valid.
+func NewURLValidator() Validator {
+	return urlValidator{}
 }
