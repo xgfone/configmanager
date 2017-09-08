@@ -2,13 +2,36 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 )
 
 var (
+	errNil      = fmt.Errorf("the value is nil")
 	errStrEmtpy = fmt.Errorf("the string is empty")
 	errStrType  = fmt.Errorf("the type of the value is not string")
+	errIntType  = fmt.Errorf("the type of the value is not int")
 )
+
+func toString(v interface{}) (string, error) {
+	if v == nil {
+		return "", errNil
+	}
+	if s, ok := v.(string); ok {
+		return s, nil
+	}
+	return "", errStrType
+}
+
+func toInt(v interface{}) (int, error) {
+	if v == nil {
+		return 0, errNil
+	}
+	if i, ok := v.(int); ok {
+		return i, nil
+	}
+	return 0, errIntType
+}
 
 type strLenValidator struct {
 	min int
@@ -22,13 +45,9 @@ func NewStrLenValidator(min, max int) Validator {
 }
 
 func (sv strLenValidator) Validate(v interface{}) error {
-	if v == nil {
-		return errStrEmtpy
-	}
-
-	s, ok := v.(string)
-	if !ok {
-		return errStrType
+	s, err := toString(v)
+	if err != nil {
+		return err
 	}
 
 	_len := len(s)
@@ -42,16 +61,15 @@ func (sv strLenValidator) Validate(v interface{}) error {
 type notEmptyStrValidator struct{}
 
 func (e notEmptyStrValidator) Validate(v interface{}) error {
-	if v != nil {
-		if s, ok := v.(string); ok {
-			if len(s) > 0 {
-				return nil
-			}
-			return errStrEmtpy
-		}
-		return errStrType
+	s, err := toString(v)
+	if err != nil {
+		return err
 	}
-	return errStrEmtpy
+
+	if len(s) == 0 {
+		return errStrEmtpy
+	}
+	return nil
 }
 
 // NewStrNotEmptyValidator returns a validator to validate that the value must
@@ -63,20 +81,33 @@ func NewStrNotEmptyValidator() Validator {
 type urlValidator struct{}
 
 func (u urlValidator) Validate(v interface{}) error {
-	if v == nil {
-		return fmt.Errorf("the url is nil")
+	s, err := toString(v)
+	if err != nil {
+		return err
 	}
-
-	s, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("the url is not string")
-	}
-
-	_, err := url.Parse(s)
+	_, err = url.Parse(s)
 	return err
 }
 
 // NewURLValidator returns a validator to validate whether a url is valid.
 func NewURLValidator() Validator {
 	return urlValidator{}
+}
+
+type ipValidator struct{}
+
+func (i ipValidator) Validate(v interface{}) error {
+	s, err := toString(v)
+	if err != nil {
+		return err
+	}
+	if net.ParseIP(s) == nil {
+		return fmt.Errorf("the value is not a valid ip")
+	}
+	return nil
+}
+
+// NewIPValidator returns a validator to validate whether an ip is valid.
+func NewIPValidator() Validator {
+	return ipValidator{}
 }
