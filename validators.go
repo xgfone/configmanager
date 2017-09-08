@@ -177,3 +177,11 @@ func (r floatRangeValidator) Validate(v interface{}) error {
 func NewFloatRangeValidator(min, max float64) Validator {
 	return floatRangeValidator{min: min, max: max}
 }
+
+var portValidator = NewIntegerRangeValidator(0, 65535)
+
+// NewPortValidator returns a validator to validate whether a port is between
+// 0 and 65535.
+func NewPortValidator() Validator {
+	return portValidator
+}
