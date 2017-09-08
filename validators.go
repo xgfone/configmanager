@@ -93,10 +93,12 @@ func (e notEmptyStrValidator) Validate(v interface{}) error {
 	return nil
 }
 
+var strNotEmptyV = notEmptyStrValidator{}
+
 // NewStrNotEmptyValidator returns a validator to validate that the value must
 // not be an empty string.
 func NewStrNotEmptyValidator() Validator {
-	return notEmptyStrValidator{}
+	return strNotEmptyV
 }
 
 type urlValidator struct{}
@@ -110,9 +112,11 @@ func (u urlValidator) Validate(v interface{}) error {
 	return err
 }
 
+var urlV = urlValidator{}
+
 // NewURLValidator returns a validator to validate whether a url is valid.
 func NewURLValidator() Validator {
-	return urlValidator{}
+	return urlV
 }
 
 type ipValidator struct{}
@@ -128,9 +132,11 @@ func (i ipValidator) Validate(v interface{}) error {
 	return nil
 }
 
+var ipV = ipValidator{}
+
 // NewIPValidator returns a validator to validate whether an ip is valid.
 func NewIPValidator() Validator {
-	return ipValidator{}
+	return ipV
 }
 
 type integerRangeValidator struct {
