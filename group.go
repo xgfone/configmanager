@@ -38,6 +38,32 @@ func (g OptGroup) getAllOpts(cli bool) []Opt {
 	return opts
 }
 
+func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
+	opt := g.opts[name].opt
+
+	// The option has a validator.
+	if v, ok := opt.(Validator); ok {
+		if err = v.Validate(value); err != nil {
+			return
+		}
+	}
+
+	// The option has a validator chain.
+	if vc, ok := opt.(ValidatorChainOpt); ok {
+		vs := vc.GetValidators()
+		if len(vs) > 0 {
+			for _, v := range vs {
+				if err = v.Validate(value); err != nil {
+					return
+				}
+			}
+		}
+	}
+
+	g.values[name] = value
+	return
+}
+
 func (g OptGroup) setOptions(options map[string]string) error {
 	for name, opt := range g.opts {
 		if value, ok := options[name]; ok {
@@ -45,20 +71,26 @@ func (g OptGroup) setOptions(options map[string]string) error {
 			if err != nil {
 				return err
 			}
-			g.values[name] = v
+			if err := g.setOptValue(name, v); err != nil {
+				return err
+			}
 		} else if _default := opt.opt.GetDefault(); _default != nil {
-			g.values[name] = _default
+			if err := g.setOptValue(name, _default); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 // Check whether some required options neither have the value nor the default value.
-func (g OptGroup) checkRequiredOption(required bool) error {
+func (g OptGroup) checkRequiredOption(required bool) (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.GetDefault(); v != nil {
-				g.values[name] = v
+				if err = g.setOptValue(name, v); err != nil {
+					return
+				}
 				continue
 			}
 

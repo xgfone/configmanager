@@ -24,6 +24,37 @@ type Opt interface {
 	Parse(string) (interface{}, error)
 }
 
+// Validator is an interface to validate whether the value v is valid.
+type Validator interface {
+	// Validate whether the value v is valid.
+	//
+	// Return nil if the value is ok, or an error instead.
+	Validate(v interface{}) error
+}
+
+// ValidatorOpt is an Opt interface with the validator.
+type ValidatorOpt interface {
+	Opt
+	Validator
+}
+
+// ValidatorChainOpt is an Opt interface with more than one validator.
+//
+// The validators in the chain will be called in turn. The validation is
+// considered as failure only if one validator returns an error, that's,
+// only all the validators return nil, it's successful.
+type ValidatorChainOpt interface {
+	Opt
+
+	// Set the validator chain.
+	//
+	// Notice: this method should return the option itself.
+	SetValidators([]Validator) ValidatorChainOpt
+
+	// Return the validator chain.
+	GetValidators() []Validator
+}
+
 // Config is used to manage the configuration parsers.
 type Config struct {
 	// If true, it will check whether some options have neither the value
@@ -102,6 +133,9 @@ func (c *Config) Audit() {
 // Parse parses the option, including CLI, the config file, or others.
 //
 // if the arguments is nil, it's equal to os.Args[1:].
+//
+// After parsing a certain option, it will call the validators of the option
+// to validate whether the option value is valid.
 func (c *Config) Parse(arguments []string) (err error) {
 	if c.parsed {
 		return ErrParsed
