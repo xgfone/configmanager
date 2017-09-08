@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/mail"
 	"net/url"
 	"reflect"
 )
@@ -184,4 +185,22 @@ var portValidator = NewIntegerRangeValidator(0, 65535)
 // 0 and 65535.
 func NewPortValidator() Validator {
 	return portValidator
+}
+
+type emailValidator struct{}
+
+func (e emailValidator) Validate(v interface{}) error {
+	s, err := toString(v)
+	if err != nil {
+		return err
+	}
+	_, err = mail.ParseAddress(s)
+	return err
+}
+
+var emailV = emailValidator{}
+
+// NewEmailValidator returns a validator to validate whether an email is valid.
+func NewEmailValidator() Validator {
+	return emailV
 }
