@@ -57,13 +57,12 @@ type ValidatorChainOpt interface {
 
 // Config is used to manage the configuration parsers.
 type Config struct {
-	// If true, it will check whether some options have neither the value
-	// nor the default value; or won't check. If the check result is yes,
-	// it will return an error.
+	// If true, it will check whether the option has no value or a zero value.
+	// If yes, it will return an error.
 	//
-	// It will enable by default, and you can set it to false to cancel it.
-	// But you must set it before calling the method Parse().
-	IsRequired bool
+	// Notice: the default value that is ZORE or empty is also regarded as
+	// having the value.
+	NotEmpty bool
 
 	// Args is the rest of the CLI arguments, which are not the options
 	// starting with the prefix "-", "--" or others, etc.
@@ -83,7 +82,6 @@ type Config struct {
 // The name of the default group is DEFAULT.
 func NewConfig(cli CliParser) *Config {
 	return &Config{
-		IsRequired:   true,
 		defaultGroup: "DEFAULT",
 
 		cli:     cli,
@@ -159,7 +157,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 	if groups, args, err := c.cli.Parse(c.defaultGroup, groupOpts, arguments); err == nil {
 		for gname, opts := range groups {
 			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(opts); err != nil {
+				if err = group.setOptions(opts, c.NotEmpty); err != nil {
 					return err
 				}
 			}
@@ -186,7 +184,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 
 		for gname, options := range groups {
 			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(options); err != nil {
+				if err = group.setOptions(options, c.NotEmpty); err != nil {
 					return nil
 				}
 			}
@@ -195,7 +193,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
-		if err = group.checkRequiredOption(c.IsRequired); err != nil {
+		if err = group.checkRequiredOption(c.NotEmpty); err != nil {
 			return err
 		}
 	}
@@ -217,14 +215,14 @@ func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
 				args[key] = s
 				continue
 			}
-			err = fmt.Errorf("the type of the option '%s' in the default group is not string",
+			err = fmt.Errorf("the option %s in the default group is not string",
 				key)
 			return
 		}
 		if !required {
 			continue
 		}
-		err = fmt.Errorf("the option '%s' is missing, which is reqired by the parser '%s'",
+		err = fmt.Errorf("the option %s is missing, which is reqired by the parser %s",
 			key, name)
 		return
 	}
@@ -248,7 +246,7 @@ func (c *Config) AddParser(parser Parser) *Config {
 	name := parser.Name()
 	for _, p := range c.parsers {
 		if p.Name() == name {
-			panic(fmt.Errorf("the parser '%s' has been added", name))
+			panic(fmt.Errorf("the parser %s has been added", name))
 		}
 	}
 
@@ -339,7 +337,7 @@ func (c *Config) Group(group string) OptGroup {
 	if g, ok := c.groups[group]; ok {
 		return g
 	}
-	panic(fmt.Errorf("have no the group '%s'", group))
+	panic(fmt.Errorf("have no group %s", group))
 }
 
 // SetDefaultGroup resets the name of the default group.

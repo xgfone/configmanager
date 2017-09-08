@@ -150,7 +150,7 @@ func (o baseOpt) GetDefault() interface{} {
 	case float64Type:
 		return o.Default.(float64)
 	default:
-		panic(fmt.Errorf("don't support the type '%s'", o._type))
+		panic(fmt.Errorf("don't support the type %s", o._type))
 	}
 }
 
@@ -168,7 +168,7 @@ func (o baseOpt) Parse(data string) (v interface{}, err error) {
 	case float32Type, float64Type:
 		v, err = ToFloat64(data)
 	default:
-		panic(fmt.Errorf("don't support the type '%s'", o._type))
+		panic(fmt.Errorf("don't support the type %s", o._type))
 	}
 
 	if err != nil {
@@ -202,99 +202,71 @@ func (o baseOpt) Parse(data string) (v interface{}, err error) {
 }
 
 // BoolOpt return a new bool option.
-//
-// Notice: the type of the default value must be bool or nil that's no default.
-func BoolOpt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func BoolOpt(short, name string, _default bool, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, boolType)
 }
 
 // StrOpt return a new string option.
-//
-// Notice: the type of the default value must be string or nil that's no default.
-func StrOpt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func StrOpt(short, name string, _default string, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, stringType)
 }
 
 // IntOpt return a new int option.
-//
-// Notice: the type of the default value must be int or nil that's no default.
-func IntOpt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func IntOpt(short, name string, _default int, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, intType)
 }
 
 // Int8Opt return a new int8 option.
-//
-// Notice: the type of the default value must be int8 or nil that's no default.
-func Int8Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Int8Opt(short, name string, _default int8, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, int8Type)
 }
 
 // Int16Opt return a new int16 option.
-//
-// Notice: the type of the default value must be int16 or nil that's no default.
-func Int16Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Int16Opt(short, name string, _default int16, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, int16Type)
 }
 
 // Int32Opt return a new int32 option.
-//
-// Notice: the type of the default value must be int32 or nil that's no default.
-func Int32Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Int32Opt(short, name string, _default int32, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, int32Type)
 }
 
 // Int64Opt return a new int64 option.
-//
-// Notice: the type of the default value must be int64 or nil that's no default.
-func Int64Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Int64Opt(short, name string, _default int64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, int64Type)
 }
 
 // UintOpt return a new uint option.
-//
-// Notice: the type of the default value must be uint or nil that's no default.
-func UintOpt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func UintOpt(short, name string, _default uint, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, uintType)
 }
 
 // Uint8Opt return a new uint8 option.
-//
-// Notice: the type of the default value must be uint8 or nil that's no default.
-func Uint8Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Uint8Opt(short, name string, _default uint8, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, uint8Type)
 }
 
 // Uint16Opt return a new uint16 option.
-//
-// Notice: the type of the default value must be uint16 or nil that's no default.
-func Uint16Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Uint16Opt(short, name string, _default uint16, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, uint16Type)
 }
 
 // Uint32Opt return a new uint32 option.
-//
-// Notice: the type of the default value must be uint32 or nil that's no default.
-func Uint32Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Uint32Opt(short, name string, _default uint32, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, uint32Type)
 }
 
 // Uint64Opt return a new uint64 option.
-//
-// Notice: the type of the default value must be uint64 or nil that's no default.
-func Uint64Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Uint64Opt(short, name string, _default uint64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, uint64Type)
 }
 
 // Float32Opt return a new float32 option.
-//
-// Notice: the type of the default value must be float32 or nil that's no default.
-func Float32Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Float32Opt(short, name string, _default float32, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, float32Type)
 }
 
 // Float64Opt return a new float64 option.
-//
-// Notice: the type of the default value must be float64 or nil that's no default.
-func Float64Opt(short, name string, _default interface{}, help string) ValidatorChainOpt {
+func Float64Opt(short, name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, float64Type)
 }

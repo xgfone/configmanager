@@ -4,12 +4,12 @@ import "fmt"
 
 func ExampleConfig() {
 	cliOpts1 := []Opt{
-		StrOpt("", "required", nil, "required").SetValidators([]Validator{NewStrLenValidator(1, 10)}),
+		StrOpt("", "required", "", "required").SetValidators([]Validator{NewStrLenValidator(1, 10)}),
 		BoolOpt("", "yes", true, "test bool option"),
 	}
 
 	cliOpts2 := []Opt{
-		BoolOpt("", "no", nil, "test bool option"),
+		BoolOpt("", "no", false, "test bool option"),
 		StrOpt("", "optional", "optional", "optional"),
 	}
 

@@ -243,7 +243,7 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 
 		n := strings.Index(line, p.sep)
 		if n == -1 {
-			err = fmt.Errorf("the line misses the separator '%s'", p.sep)
+			err = fmt.Errorf("the line misses the separator %s", p.sep)
 			return
 		}
 

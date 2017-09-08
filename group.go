@@ -38,7 +38,15 @@ func (g OptGroup) getAllOpts(cli bool) []Opt {
 	return opts
 }
 
-func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
+func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool) (err error) {
+	if notEmpty {
+		if value == nil {
+			return fmt.Errorf("the value of %s in the group %s is nil", name, g.name)
+		} else if IsZero(value) {
+			return fmt.Errorf("the value of %s in the group %s is ZERO", name, g.name)
+		}
+	}
+
 	opt := g.opts[name].opt
 
 	// The option has a validator.
@@ -64,18 +72,18 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 	return
 }
 
-func (g OptGroup) setOptions(options map[string]string) error {
+func (g OptGroup) setOptions(options map[string]string, notEmpty bool) error {
 	for name, opt := range g.opts {
 		if value, ok := options[name]; ok {
 			v, err := opt.opt.Parse(value)
 			if err != nil {
 				return err
 			}
-			if err := g.setOptValue(name, v); err != nil {
+			if err := g.setOptValue(name, v, notEmpty); err != nil {
 				return err
 			}
 		} else if _default := opt.opt.GetDefault(); _default != nil {
-			if err := g.setOptValue(name, _default); err != nil {
+			if err := g.setOptValue(name, _default, notEmpty); err != nil {
 				return err
 			}
 		}
@@ -83,23 +91,21 @@ func (g OptGroup) setOptions(options map[string]string) error {
 	return nil
 }
 
-// Check whether some required options neither have the value nor the default value.
-func (g OptGroup) checkRequiredOption(required bool) (err error) {
+// Check whether the required option has no value or a ZORE value.
+func (g OptGroup) checkRequiredOption(notEmpty bool) (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.GetDefault(); v != nil {
-				if err = g.setOptValue(name, v); err != nil {
+				if err = g.setOptValue(name, v, notEmpty); err != nil {
 					return
 				}
 				continue
 			}
 
-			if !required {
-				continue
+			if notEmpty {
+				return fmt.Errorf("the option %s in the group %s has no value",
+					name, g.name)
 			}
-
-			return fmt.Errorf("the option '%s' of the group '%s' has no value",
-				name, g.name)
 		}
 	}
 	return nil
@@ -110,7 +116,7 @@ func (g OptGroup) checkRequiredOption(required bool) (err error) {
 // The first argument cli indicates whether the option is as the CLI option, too.
 func (g OptGroup) registerOpt(cli bool, opt Opt) {
 	if _, ok := g.opts[opt.GetName()]; ok {
-		panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
+		panic(fmt.Errorf("the option %s has been registered into the group %s",
 			opt.GetName(), g.name))
 	}
 	g.opts[opt.GetName()] = option{isCli: cli, opt: opt}
@@ -135,7 +141,7 @@ func (g OptGroup) Value(name string) interface{} {
 func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	opt := g.Value(name)
 	if opt == nil {
-		return nil, fmt.Errorf("no option '%s' in the group '%s'", name, g.name)
+		return nil, fmt.Errorf("the group %s has no option %s", name, g.name)
 	}
 
 	switch _type {
@@ -198,7 +204,7 @@ func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("don't support the type %s", _type)
 	}
-	return nil, fmt.Errorf("the type of the option '%s' in the group '%s' is not %s",
+	return nil, fmt.Errorf("the type of the option %s in the group %s is not %s",
 		name, g.name, _type)
 }
 

@@ -32,7 +32,7 @@ func (sv strLenValidator) Validate(v interface{}) error {
 
 	_len := len(s)
 	if _len > sv.max || _len < sv.min {
-		return fmt.Errorf("the length of '%s' is %d, not between %d and %d",
+		return fmt.Errorf("the length of %s is %d, not between %d and %d",
 			s, _len, sv.min, sv.max)
 	}
 	return nil
