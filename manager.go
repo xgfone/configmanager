@@ -30,12 +30,12 @@ type Config struct {
 	// nor the default value; or won't check. If the check result is yes,
 	// it will return an error.
 	//
-	// The default will check them, and you can set it to false to cancel it.
+	// It will enable by default, and you can set it to false to cancel it.
 	// But you must set it before calling the method Parse().
 	IsRequired bool
 
-	// Args is the rest of the CLI arguments, which are not the options,
-	// such as the option starting with the prefix "-" or "--".
+	// Args is the rest of the CLI arguments, which are not the options
+	// starting with the prefix "-", "--" or others, etc.
 	Args []string
 
 	defaultGroup string
@@ -108,42 +108,44 @@ func (c *Config) Parse(arguments []string) (err error) {
 	}
 	c.parsed = true
 
+	if arguments == nil {
+		arguments = os.Args[1:]
+	}
+
 	// Ensure that the default group exists.
 	if _, ok := c.groups[c.defaultGroup]; !ok {
 		c.groups[c.defaultGroup] = NewOptGroup(c.defaultGroup)
 	}
 
-	// Register the CLI option into the CLI parser.
+	// Parse the CLI arguments.
 	groupOpts := make(map[string][]Opt, len(c.groups))
 	for name, group := range c.groups {
 		groupOpts[name] = group.getAllOpts(true)
 	}
-	c.cli.Register(c.defaultGroup, groupOpts)
-
-	// Register the option into the other parsers.
-	for name, group := range c.groups {
-		groupOpts[name] = group.getAllOpts(false)
-	}
-	for _, p := range c.parsers {
-		p.Register(c.defaultGroup, groupOpts)
-	}
-
-	// Parse the CLI arguments.
-	if arguments == nil {
-		arguments = os.Args[1:]
-	}
-	if err = c.parseCli(arguments); err != nil {
-		return
+	if groups, args, err := c.cli.Parse(c.defaultGroup, groupOpts, arguments); err == nil {
+		for gname, opts := range groups {
+			if group, ok := c.groups[gname]; ok {
+				if err = group.setOptions(opts); err != nil {
+					return err
+				}
+			}
+		}
+		c.Args = args
+	} else {
+		return err
 	}
 
 	// Parse the other options by other parsers.
+	for name, group := range c.groups {
+		groupOpts[name] = group.getAllOpts(false)
+	}
 	for _, parser := range c.parsers {
 		args, err := c.getValuesByKeys(parser.Name(), parser.GetKeys())
 		if err != nil {
 			return err
 		}
 
-		groups, err := parser.Parse(args)
+		groups, err := parser.Parse(c.defaultGroup, groupOpts, args)
 		if err != nil {
 			return err
 		}
@@ -193,24 +195,6 @@ func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
 		return
 	}
 
-	return
-}
-
-func (c *Config) parseCli(arguments []string) (err error) {
-	groups, args, err := c.cli.Parse(arguments)
-	if err != nil {
-		return
-	}
-
-	for gname, opts := range groups {
-		if group, ok := c.groups[gname]; ok {
-			if err = group.setOptions(opts); err != nil {
-				return
-			}
-		}
-	}
-
-	c.Args = args
 	return
 }
 
