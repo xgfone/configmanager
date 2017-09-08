@@ -6,6 +6,7 @@ import (
 	"net/mail"
 	"net/url"
 	"reflect"
+	"regexp"
 )
 
 var (
@@ -122,6 +123,32 @@ func (a strArrayValidator) Validate(v interface{}) error {
 // the array.
 func NewStrArrayValidator(array []string) Validator {
 	return strArrayValidator{array}
+}
+
+type regexpValidator struct {
+	re *regexp.Regexp
+}
+
+func (r regexpValidator) Validate(v interface{}) error {
+	s, err := toString(v)
+	if err != nil {
+		return err
+	}
+	if r.re.MatchString(s) {
+		return nil
+	}
+	return fmt.Errorf("the value '%s' doesn't match the regexp '%s'", s, r.re)
+}
+
+// NewRegexpValidator returns a validator to validate whether the value match
+// the regular expression.
+//
+// If the regular expression can't be parsed, it will panic.
+//
+// This validator will call the method regexp.MatchString(s) when validating.
+// So it is equal to regexp.MustCompile(pattern).MatchString(s).
+func NewRegexpValidator(pattern string) Validator {
+	return regexpValidator{regexp.MustCompile(pattern)}
 }
 
 type urlValidator struct{}
