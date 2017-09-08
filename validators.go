@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	errNil      = fmt.Errorf("the value is nil")
-	errStrEmtpy = fmt.Errorf("the string is empty")
-	errStrType  = fmt.Errorf("the value is not string type")
-	errIntType  = fmt.Errorf("the value is not an integer type")
+	errNil       = fmt.Errorf("the value is nil")
+	errStrEmtpy  = fmt.Errorf("the string is empty")
+	errStrType   = fmt.Errorf("the value is not string type")
+	errIntType   = fmt.Errorf("the value is not an integer type")
+	errFloatType = fmt.Errorf("the value is not an float type")
 )
 
 func toString(v interface{}) (string, error) {
@@ -36,6 +37,19 @@ func toInt64(v interface{}) (int64, error) {
 		return int64(reflect.ValueOf(v).Uint()), nil
 	default:
 		return 0, errIntType
+	}
+}
+
+func toFloat64(v interface{}) (float64, error) {
+	if v == nil {
+		return 0, errNil
+	}
+
+	switch v.(type) {
+	case float32, float64:
+		return reflect.ValueOf(v).Float(), nil
+	default:
+		return 0, errFloatType
 	}
 }
 
@@ -139,4 +153,27 @@ func (r integerRangeValidator) Validate(v interface{}) error {
 // value is between the min and the max.
 func NewIntegerRangeValidator(min, max int64) Validator {
 	return integerRangeValidator{min: min, max: max}
+}
+
+type floatRangeValidator struct {
+	min float64
+	max float64
+}
+
+func (r floatRangeValidator) Validate(v interface{}) error {
+	f, err := toFloat64(v)
+	if err != nil {
+		return err
+	}
+	if r.min > f || f > r.max {
+		return fmt.Errorf("the value %f is not between %f and %f",
+			f, r.min, r.max)
+	}
+	return nil
+}
+
+// NewFloatRangeValidator returns a validator to validate whether the float
+// value is between the min and the max.
+func NewFloatRangeValidator(min, max float64) Validator {
+	return floatRangeValidator{min: min, max: max}
 }
