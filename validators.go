@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"reflect"
 )
 
 var (
 	errNil      = fmt.Errorf("the value is nil")
 	errStrEmtpy = fmt.Errorf("the string is empty")
-	errStrType  = fmt.Errorf("the type of the value is not string")
-	errIntType  = fmt.Errorf("the type of the value is not int")
+	errStrType  = fmt.Errorf("the value is not string type")
+	errIntType  = fmt.Errorf("the value is not an integer type")
 )
 
 func toString(v interface{}) (string, error) {
@@ -23,14 +24,19 @@ func toString(v interface{}) (string, error) {
 	return "", errStrType
 }
 
-func toInt(v interface{}) (int, error) {
+func toInt64(v interface{}) (int64, error) {
 	if v == nil {
 		return 0, errNil
 	}
-	if i, ok := v.(int); ok {
-		return i, nil
+
+	switch v.(type) {
+	case int, int8, int16, int32, int64:
+		return reflect.ValueOf(v).Int(), nil
+	case uint, uint8, uint16, uint32, uint64:
+		return int64(reflect.ValueOf(v).Uint()), nil
+	default:
+		return 0, errIntType
 	}
-	return 0, errIntType
 }
 
 type strLenValidator struct {
@@ -110,4 +116,27 @@ func (i ipValidator) Validate(v interface{}) error {
 // NewIPValidator returns a validator to validate whether an ip is valid.
 func NewIPValidator() Validator {
 	return ipValidator{}
+}
+
+type integerRangeValidator struct {
+	min int64
+	max int64
+}
+
+func (r integerRangeValidator) Validate(v interface{}) error {
+	i, err := toInt64(v)
+	if err != nil {
+		return err
+	}
+	if r.min > i || i > r.max {
+		return fmt.Errorf("the value %d is not between %d and %d",
+			i, r.min, r.max)
+	}
+	return nil
+}
+
+// NewIntegerRangeValidator returns a validator to validate whether the integer
+// value is between the min and the max.
+func NewIntegerRangeValidator(min, max int64) Validator {
+	return integerRangeValidator{min: min, max: max}
 }
