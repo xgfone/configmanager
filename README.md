@@ -1,6 +1,8 @@
 # go-config
 An extensible go configuration. The default parsers can parse the CLI arguments and the ini file. You can implement and register your parser, and the configuration engine will call the parser to parse the configuration.
 
+The inspiration is from [oslo.config](https://github.com/openstack/oslo.config), which is a `OpenStack` library for config.
+
 
 ## Principle of Work
 
