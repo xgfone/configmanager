@@ -101,6 +101,29 @@ func NewStrNotEmptyValidator() Validator {
 	return strNotEmptyV
 }
 
+type strArrayValidator struct {
+	sArray []string
+}
+
+func (a strArrayValidator) Validate(v interface{}) error {
+	s, err := toString(v)
+	if err != nil {
+		return err
+	}
+	for _, v := range a.sArray {
+		if s == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("the value %s is invalid", s)
+}
+
+// NewStrArrayValidator returns a validator to validate that the value is in
+// the array.
+func NewStrArrayValidator(array []string) Validator {
+	return strArrayValidator{array}
+}
+
 type urlValidator struct{}
 
 func (u urlValidator) Validate(v interface{}) error {
