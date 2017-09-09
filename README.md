@@ -44,7 +44,7 @@ func main() {
     iniParser := config.NewSimpleIniParser("config-file")
     conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-    validators := []Validator{NewStrLenValidator(7, 15)}
+    validators := []Validator{NewIPValidator()}
     ipOpt := config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators)
     conf.RegisterCliOpt("", ipOpt)
     conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
@@ -86,11 +86,12 @@ import (
     config "github.com/xgfone/go-config"
 )
 
-var validators = []Validator{NewStrLenValidator(7, 15)}
+var ipValidators = []Validator{NewIPValidator()}
+var portValidators = []Validator{NewPortValidator()}
 
 var opts = []config.Opt{
-    config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators),
-    config.IntOpt("", "port", 80, true, "the port"),
+    config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(ipValidators),
+    config.IntOpt("", "port", 80, true, "the port").SetValidators(portValidators),
 }
 
 func main() {
