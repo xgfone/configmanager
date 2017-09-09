@@ -25,17 +25,24 @@ type Opt interface {
 }
 
 // Validator is an interface to validate whether the value v is valid.
+//
+// When implementing an Opt, you can supply the method Validate to implement
+// the interface Validator, too. The config engine will check and call it.
+// So the Opt is the same to implement the interface:
+//
+//    type ValidatorOpt interface {
+//        Opt
+//        Validator
+//    }
+//
+// In order to be flexible and customized, the builtin validators use the
+// validator chain ValidatorChainOpt to handle more than one validator.
+// Notice: they both are the valid Opts with the validator function.
 type Validator interface {
 	// Validate whether the value v is valid.
 	//
 	// Return nil if the value is ok, or an error instead.
 	Validate(v interface{}) error
-}
-
-// ValidatorOpt is an Opt interface with the validator.
-type ValidatorOpt interface {
-	Opt
-	Validator
 }
 
 // ValidatorChainOpt is an Opt interface with more than one validator.
