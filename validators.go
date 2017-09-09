@@ -55,6 +55,14 @@ func toFloat64(v interface{}) (float64, error) {
 	}
 }
 
+// ValidatorFunc is a wrapper of a function validator.
+type ValidatorFunc func(v interface{}) error
+
+// Validate implements the method Validate of the interface Validator.
+func (f ValidatorFunc) Validate(v interface{}) error {
+	return f(v)
+}
+
 type strLenValidator struct {
 	min int
 	max int
