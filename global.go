@@ -2,8 +2,6 @@ package config
 
 import (
 	"flag"
-	"os"
-	"path/filepath"
 )
 
 // IniParserOptName is the name of the option to indicate the path of
@@ -15,7 +13,7 @@ var Conf = NewDefault()
 
 // NewDefault returns a new default config manager.
 func NewDefault() *Config {
-	cli := NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
+	cli := NewFlagCliParser("", flag.ExitOnError)
 	ini := NewSimpleIniParser(IniParserOptName)
 	conf := NewConfig(cli).AddParser(ini)
 	conf.RegisterCliOpt("", StrOpt("", IniParserOptName, "",

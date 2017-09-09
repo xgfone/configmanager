@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
@@ -103,6 +105,9 @@ type flagParser struct {
 // The arguments is the same as that of flag.NewFlagSet(), but if the name is
 // "", it will be filepath.Base(os.Args[0]).
 func NewFlagCliParser(appName string, errhandler flag.ErrorHandling) CliParser {
+	if appName == "" {
+		appName = filepath.Base(os.Args[0])
+	}
 	return flagParser{
 		name:       appName,
 		errhandler: errhandler,

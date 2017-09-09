@@ -34,13 +34,12 @@ import (
     "flag"
     "fmt"
     "os"
-    "path/filepath"
 
     config "github.com/xgfone/go-config"
 )
 
 func main() {
-    cliParser := config.NewFlagCliParser(filepath.Base(os.Args[0]), flag.ExitOnError)
+    cliParser := config.NewFlagCliParser("", flag.ExitOnError)
     iniParser := config.NewSimpleIniParser("config-file")
     conf := config.NewConfig(cliParser).AddParser(iniParser)
 
