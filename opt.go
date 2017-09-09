@@ -57,10 +57,10 @@ var optTypeMap = map[optType]string{
 }
 
 type baseOpt struct {
-	Name    string
-	Help    string
-	Short   string
-	Default interface{}
+	name     string
+	help     string
+	short    string
+	_default interface{}
 
 	_type      optType
 	validators []Validator
@@ -71,13 +71,13 @@ var _ ValidatorChainOpt = baseOpt{}
 func newBaseOpt(short, name string, _default interface{}, help string,
 	optType optType) baseOpt {
 	o := baseOpt{
-		Short:   short,
-		Name:    name,
-		Help:    help,
-		Default: _default,
-		_type:   optType,
+		short:    short,
+		name:     name,
+		help:     help,
+		_default: _default,
+		_type:    optType,
 	}
-	o.GetDefault()
+	o.Default()
 	return o
 }
 
@@ -93,13 +93,13 @@ func (o baseOpt) GetValidators() []Validator {
 }
 
 // GetName returns the name of the option.
-func (o baseOpt) GetName() string {
-	return o.Name
+func (o baseOpt) Name() string {
+	return o.name
 }
 
 // GetShort returns the shorthand name of the option.
-func (o baseOpt) GetShort() string {
-	return o.Short
+func (o baseOpt) Short() string {
+	return o.short
 }
 
 func (o baseOpt) IsBool() bool {
@@ -110,45 +110,45 @@ func (o baseOpt) IsBool() bool {
 }
 
 // GetHelp returns the help doc of the option.
-func (o baseOpt) GetHelp() string {
-	return o.Help
+func (o baseOpt) Help() string {
+	return o.help
 }
 
 // GetDefault returns the default value of the option.
-func (o baseOpt) GetDefault() interface{} {
-	if o.Default == nil {
+func (o baseOpt) Default() interface{} {
+	if o._default == nil {
 		return nil
 	}
 
 	switch o._type {
 	case boolType:
-		return o.Default.(bool)
+		return o._default.(bool)
 	case stringType:
-		return o.Default.(string)
+		return o._default.(string)
 	case intType:
-		return o.Default.(int)
+		return o._default.(int)
 	case int8Type:
-		return o.Default.(int8)
+		return o._default.(int8)
 	case int16Type:
-		return o.Default.(int16)
+		return o._default.(int16)
 	case int32Type:
-		return o.Default.(int32)
+		return o._default.(int32)
 	case int64Type:
-		return o.Default.(int64)
+		return o._default.(int64)
 	case uintType:
-		return o.Default.(uint)
+		return o._default.(uint)
 	case uint8Type:
-		return o.Default.(uint8)
+		return o._default.(uint8)
 	case uint16Type:
-		return o.Default.(uint16)
+		return o._default.(uint16)
 	case uint32Type:
-		return o.Default.(uint32)
+		return o._default.(uint32)
 	case uint64Type:
-		return o.Default.(uint64)
+		return o._default.(uint64)
 	case float32Type:
-		return o.Default.(float32)
+		return o._default.(float32)
 	case float64Type:
-		return o.Default.(float64)
+		return o._default.(float64)
 	default:
 		panic(fmt.Errorf("don't support the type %s", o._type))
 	}

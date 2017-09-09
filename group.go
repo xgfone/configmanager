@@ -86,7 +86,7 @@ func (g OptGroup) setOptions(options map[string]interface{}, notEmpty bool) erro
 			if err := g.setOptValue(name, v, notEmpty); err != nil {
 				return err
 			}
-		} else if _default := opt.opt.GetDefault(); _default != nil {
+		} else if _default := opt.opt.Default(); _default != nil {
 			if err := g.setOptValue(name, _default, notEmpty); err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func (g OptGroup) setOptions(options map[string]interface{}, notEmpty bool) erro
 func (g OptGroup) checkRequiredOption(notEmpty bool) (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
-			if v := opt.opt.GetDefault(); v != nil {
+			if v := opt.opt.Default(); v != nil {
 				if err = g.setOptValue(name, v, notEmpty); err != nil {
 					return
 				}
@@ -120,11 +120,11 @@ func (g OptGroup) checkRequiredOption(notEmpty bool) (err error) {
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
 func (g OptGroup) registerOpt(cli bool, opt Opt) {
-	if _, ok := g.opts[opt.GetName()]; ok {
+	if _, ok := g.opts[opt.Name()]; ok {
 		panic(fmt.Errorf("the option %s has been registered into the group %s",
-			opt.GetName(), g.name))
+			opt.Name(), g.name))
 	}
-	g.opts[opt.GetName()] = option{isCli: cli, opt: opt}
+	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
 }
 
 // registerOpts registers many options into the group once.

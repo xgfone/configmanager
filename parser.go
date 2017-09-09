@@ -121,21 +121,21 @@ func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
 	name2opt := make(map[string]string, 8)
 	for group, _opts := range opts {
 		for _, opt := range _opts {
-			name := opt.GetName()
+			name := opt.Name()
 			if group != _default {
 				name = fmt.Sprintf("%s_%s", group, name)
 			}
 			name2group[name] = group
-			name2opt[name] = opt.GetName()
+			name2opt[name] = opt.Name()
 
 			if opt.IsBool() {
 				var _default bool
-				if v := opt.GetDefault(); v != nil {
+				if v := opt.Default(); v != nil {
 					_default = v.(bool)
 				}
-				flagSet.Bool(name, _default, opt.GetHelp())
+				flagSet.Bool(name, _default, opt.Help())
 			} else {
-				flagSet.String(name, "", opt.GetHelp())
+				flagSet.String(name, "", opt.Help())
 			}
 		}
 	}
@@ -212,7 +212,7 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 			options[group] = g
 		}
 		for _, opt := range _opts {
-			g[opt.GetName()] = struct{}{}
+			g[opt.Name()] = struct{}{}
 		}
 	}
 
