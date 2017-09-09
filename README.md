@@ -45,13 +45,11 @@ func main() {
     conf := config.NewConfig(cliParser).AddParser(iniParser)
 
     validators := []Validator{NewIPValidator()}
-    ipOpt := config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(validators)
+    ipOpt := config.StrOpt("", "ip", "", "the ip address").SetValidators(validators)
     conf.RegisterCliOpt("", ipOpt)
-    conf.RegisterCliOpt("", config.IntOpt("", "port", 80, false, "the port"))
-    conf.RegisterCliOpt("", config.StrOpt("", "config-file", nil, false,
-        "The path of the ini config file."))
-    conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0",
-        false, "the redis connection url"))
+    conf.RegisterCliOpt("", config.IntOpt("", "port", 80, "the port"))
+    conf.RegisterCliOpt("", config.StrOpt("", "config-file", "", "The path of the ini config file."))
+    conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0", "the redis connection url"))
 
     if err := conf.Parse(nil); err != nil {
         conf.Audit() // View the internal information.
@@ -90,8 +88,8 @@ var ipValidators = []Validator{NewIPValidator()}
 var portValidators = []Validator{NewPortValidator()}
 
 var opts = []config.Opt{
-    config.StrOpt("", "ip", nil, true, "the ip address").SetValidators(ipValidators),
-    config.IntOpt("", "port", 80, true, "the port").SetValidators(portValidators),
+    config.StrOpt("", "ip", "", "the ip address").SetValidators(ipValidators),
+    config.IntOpt("", "port", 80, "the port").SetValidators(portValidators),
 }
 
 func main() {
