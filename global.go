@@ -1,9 +1,5 @@
 package config
 
-import (
-	"flag"
-)
-
 // IniParserOptName is the name of the option to indicate the path of
 // the ini config file.
 var IniParserOptName = "config-file"
@@ -13,7 +9,7 @@ var Conf = NewDefault()
 
 // NewDefault returns a new default config manager.
 func NewDefault() *Config {
-	cli := NewFlagCliParser("", flag.ExitOnError)
+	cli := NewDefaultFlagCliParser()
 	ini := NewSimpleIniParser(IniParserOptName)
 	conf := NewConfig(cli).AddParser(ini)
 	conf.RegisterCliOpt("", StrOpt("", IniParserOptName, "",

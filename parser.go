@@ -96,14 +96,28 @@ type CliParser interface {
 }
 
 type flagParser struct {
+	flagSet    *flag.FlagSet
 	name       string
 	errhandler flag.ErrorHandling
+}
+
+// NewDefaultFlagCliParser returns a new CLI parser based on flag.
+//
+// The parser will use flag.CommandLine to parse the CLI arguments.
+func NewDefaultFlagCliParser() CliParser {
+	return flagParser{
+		flagSet: flag.CommandLine,
+	}
 }
 
 // NewFlagCliParser returns a new CLI parser based on flag.FlagSet.
 //
 // The arguments is the same as that of flag.NewFlagSet(), but if the name is
 // "", it will be filepath.Base(os.Args[0]).
+//
+// When other libraries use the default global flag.FlagSet, that's
+// flag.CommandLine, such as github.com/golang/glog, please use
+// NewDefaultFlagCliParser(), not this function.
 func NewFlagCliParser(appName string, errhandler flag.ErrorHandling) CliParser {
 	if appName == "" {
 		appName = filepath.Base(os.Args[0])
@@ -121,7 +135,11 @@ func (f flagParser) Name() string {
 func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
 	results map[string]map[string]interface{}, args []string, err error) {
 	// Register the options into flag.FlagSet.
-	flagSet := flag.NewFlagSet(f.name, f.errhandler)
+	flagSet := f.flagSet
+	if flagSet == nil {
+		flagSet = flag.NewFlagSet(f.name, f.errhandler)
+	}
+
 	name2group := make(map[string]string, 8)
 	name2opt := make(map[string]string, 8)
 	for group, _opts := range opts {
