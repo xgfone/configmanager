@@ -158,7 +158,11 @@ func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
 				}
 				flagSet.Bool(name, _default, opt.Help())
 			} else {
-				flagSet.String(name, "", opt.Help())
+				_default := ""
+				if opt.Default() != nil {
+					_default = fmt.Sprintf("%v", opt.Default())
+				}
+				flagSet.String(name, _default, opt.Help())
 			}
 		}
 	}
