@@ -270,3 +270,73 @@ func Float32Opt(short, name string, _default float32, help string) ValidatorChai
 func Float64Opt(short, name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, float64Type)
 }
+
+// Bool return a new bool option.
+func Bool(name string, _default bool, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, boolType)
+}
+
+// Str return a new string option.
+func Str(name string, _default string, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, stringType)
+}
+
+// Int return a new int option.
+func Int(name string, _default int, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, intType)
+}
+
+// Int8 return a new int8 option.
+func Int8(name string, _default int8, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, int8Type)
+}
+
+// Int16 return a new int16 option.
+func Int16(name string, _default int16, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, int16Type)
+}
+
+// Int32 return a new int32 option.
+func Int32(name string, _default int32, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, int32Type)
+}
+
+// Int64 return a new int64 option.
+func Int64(name string, _default int64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, int64Type)
+}
+
+// Uint return a new uint option.
+func Uint(name string, _default uint, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uintType)
+}
+
+// Uint8 return a new uint8 option.
+func Uint8(name string, _default uint8, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uint8Type)
+}
+
+// Uint16 return a new uint16 option.
+func Uint16(name string, _default uint16, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uint16Type)
+}
+
+// Uint32 return a new uint32 option.
+func Uint32(name string, _default uint32, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uint32Type)
+}
+
+// Uint64 return a new uint64 option.
+func Uint64(name string, _default uint64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uint64Type)
+}
+
+// Float32 return a new float32 option.
+func Float32(name string, _default float32, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, float32Type)
+}
+
+// Float64 return a new float64 option.
+func Float64(name string, _default float64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, float64Type)
+}
