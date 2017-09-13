@@ -3,6 +3,7 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 
 The inspiration is from [oslo.config](https://github.com/openstack/oslo.config), which is a `OpenStack` library for config.
 
+**NOTICE: The API has been stable.**
 
 ## Principle of Work
 
