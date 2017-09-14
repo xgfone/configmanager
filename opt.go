@@ -271,72 +271,72 @@ func Float64Opt(short, name string, _default float64, help string) ValidatorChai
 	return newBaseOpt(short, name, _default, help, float64Type)
 }
 
-// Bool return a new bool option.
+// Bool is equal to BoolOpt("", name, _default, help).
 func Bool(name string, _default bool, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, boolType)
 }
 
-// Str return a new string option.
+// Str is equal to StrOpt("", name, _default, help).
 func Str(name string, _default string, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, stringType)
 }
 
-// Int return a new int option.
+// Int is equal to IntOpt("", name, _default, help).
 func Int(name string, _default int, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, intType)
 }
 
-// Int8 return a new int8 option.
+// Int8 is equal to Int8Opt("", name, _default, help).
 func Int8(name string, _default int8, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, int8Type)
 }
 
-// Int16 return a new int16 option.
+// Int16 is equal to Int16Opt("", name, _default, help).
 func Int16(name string, _default int16, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, int16Type)
 }
 
-// Int32 return a new int32 option.
+// Int32 is equal to Int32Opt("", name, _default, help).
 func Int32(name string, _default int32, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, int32Type)
 }
 
-// Int64 return a new int64 option.
+// Int64 is equal to Int64Opt("", name, _default, help).
 func Int64(name string, _default int64, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, int64Type)
 }
 
-// Uint return a new uint option.
+// Uint is equal to UintOpt("", name, _default, help).
 func Uint(name string, _default uint, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, uintType)
 }
 
-// Uint8 return a new uint8 option.
+// Uint8 is equal to Uint8Opt("", name, _default, help).
 func Uint8(name string, _default uint8, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, uint8Type)
 }
 
-// Uint16 return a new uint16 option.
+// Uint16 is equal to Uint16Opt("", name, _default, help).
 func Uint16(name string, _default uint16, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, uint16Type)
 }
 
-// Uint32 return a new uint32 option.
+// Uint32 is equal to Uint32Opt("", name, _default, help).
 func Uint32(name string, _default uint32, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, uint32Type)
 }
 
-// Uint64 return a new uint64 option.
+// Uint64 is equal to Uint64Opt("", name, _default, help).
 func Uint64(name string, _default uint64, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, uint64Type)
 }
 
-// Float32 return a new float32 option.
+// Float32 is equal to Float32Opt("", name, _default, help).
 func Float32(name string, _default float32, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, float32Type)
 }
 
-// Float64 return a new float64 option.
+// Float64 is equal to Float64Opt("", name, _default, help).
 func Float64(name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, float64Type)
 }
