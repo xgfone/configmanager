@@ -47,3 +47,28 @@ func ExampleConfig() {
 	// false
 	//
 }
+
+func ExampleConfig_RegisterStruct() {
+	type S struct {
+		Name    string `name:"name" cli:"1" default:"Aaron"`
+		Age     int8   `name:"age" cli:"t"`
+		Address string `cli:"true"`
+		Ignore  string `name:"-"`
+	}
+
+	s := S{}
+	Conf.RegisterStruct("", &s)
+	if err := Conf.Parse([]string{"-age", "18", "-Address", "China"}); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("Name: %s\n", s.Name)
+	fmt.Printf("Age: %d\n", s.Age)
+	fmt.Printf("Address: %s\n", s.Address)
+
+	// Output:
+	// Name: Aaron
+	// Age: 18
+	// Address: China
+}

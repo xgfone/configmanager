@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 type optType int
 
@@ -54,6 +57,23 @@ var optTypeMap = map[optType]string{
 	int64sType:  "[]int64",
 	uintsType:   "[]uint",
 	uint64sType: "[]uint64",
+}
+
+var kind2optType = map[reflect.Kind]optType{
+	reflect.Bool:    boolType,
+	reflect.String:  stringType,
+	reflect.Int:     intType,
+	reflect.Int8:    int8Type,
+	reflect.Int16:   int16Type,
+	reflect.Int32:   int32Type,
+	reflect.Int64:   int64Type,
+	reflect.Uint:    uintType,
+	reflect.Uint8:   uint8Type,
+	reflect.Uint16:  uint16Type,
+	reflect.Uint32:  uint32Type,
+	reflect.Uint64:  uint64Type,
+	reflect.Float32: float32Type,
+	reflect.Float64: float64Type,
 }
 
 type baseOpt struct {
@@ -156,7 +176,11 @@ func (o baseOpt) Default() interface{} {
 
 // Parse parses the value of the option to a certain type.
 func (o baseOpt) Parse(data interface{}) (v interface{}, err error) {
-	switch o._type {
+	return parseOpt(data, o._type)
+}
+
+func parseOpt(data interface{}, _type optType) (v interface{}, err error) {
+	switch _type {
 	case boolType:
 		return ToBool(data)
 	case stringType:
@@ -168,14 +192,14 @@ func (o baseOpt) Parse(data interface{}) (v interface{}, err error) {
 	case float32Type, float64Type:
 		v, err = ToFloat64(data)
 	default:
-		panic(fmt.Errorf("don't support the type %s", o._type))
+		err = fmt.Errorf("don't support the type %s", _type)
 	}
 
 	if err != nil {
 		return
 	}
 
-	switch o._type {
+	switch _type {
 	// case uint64Type:
 	// case int64Type:
 	// case float64Type:

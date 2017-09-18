@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 type option struct {
 	opt   Opt
@@ -12,6 +15,7 @@ type OptGroup struct {
 	name   string
 	opts   map[string]option
 	values map[string]interface{}
+	fields map[string]reflect.Value
 }
 
 // NewOptGroup returns a new OptGroup.
@@ -24,6 +28,7 @@ func NewOptGroup(name string) OptGroup {
 		name:   name,
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
+		fields: make(map[string]reflect.Value),
 	}
 }
 
@@ -72,6 +77,9 @@ func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool) (
 	}
 
 	g.values[name] = value
+	if field, ok := g.fields[name]; ok {
+		field.Set(reflect.ValueOf(value))
+	}
 	return
 }
 
@@ -113,6 +121,69 @@ func (g OptGroup) checkRequiredOption(notEmpty bool) (err error) {
 		}
 	}
 	return nil
+}
+
+func (g OptGroup) registerStruct(s interface{}) {
+	sv := reflect.ValueOf(s)
+	if sv.IsNil() || !sv.IsValid() {
+		panic(fmt.Errorf("the struct is nil or invalid"))
+	}
+
+	if sv.Kind() != reflect.Ptr || sv.Elem().Kind() != reflect.Struct {
+		panic(fmt.Errorf("the struct is not a pointer to the struct"))
+	}
+
+	// Get the struct that the pointer points to
+	sv = sv.Elem()
+	st := sv.Type()
+
+	// Register the field as the option
+	num := sv.NumField()
+	for i := 0; i < num; i++ {
+		field := st.Field(i)
+
+		name := field.Name
+		cli := false
+
+		// Get the name from the tag "name".
+		if _name := field.Tag.Get("name"); _name != "" {
+			if _name == "-" {
+				continue
+			}
+			name = _name
+		}
+
+		if _cli := field.Tag.Get("cli"); _cli != "" {
+			switch _cli {
+			case "1", "t", "T", "true", "True", "TRUE":
+				cli = true
+			}
+		}
+
+		_type := kind2optType[field.Type.Kind()]
+		if _type == 0 {
+			panic(fmt.Errorf("don't support the type %s", field.Type.Name()))
+		}
+
+		// Get the short name from the tag "short"
+		short := field.Tag.Get("short")
+
+		// Get the help doc from the tag "help"
+		help := field.Tag.Get("help")
+
+		// Get the default value from the tag "default"
+		var err error
+		var _default interface{}
+		if field.Tag.Get("default") != "" {
+			_default, err = parseOpt(field.Tag.Get("default"), _type)
+			if err != nil {
+				panic(fmt.Errorf("fail to parse the default: %s", err))
+			}
+		}
+
+		g.registerOpt(cli, newBaseOpt(short, name, _default, help, _type))
+		g.fields[name] = sv.Field(i)
+	}
 }
 
 // registerOpt registers the option into the group.

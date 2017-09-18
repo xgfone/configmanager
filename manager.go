@@ -275,6 +275,26 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
+// RegisterStruct registers the field name of the struct as options.
+//
+// The tag of the field supports "name", "short", "default", "help", which are
+// equal to the name, the short name, the default, the help of the option.
+// If you want to ignore a certain field, just set the tag "name" to "-",
+// such as `name:"-"`. The field also contains the tag "cli", whose value maybe
+// "1", "t", "T", "true", "True", "TRUE", and which represents the option is
+// also registered into the CLI parser.
+//
+// NOTICE: ALL THE TAGS ARE OPTIONAL.
+//
+// Notice: the struct must be a pointer to a struct variable, or it will panic.
+func (c *Config) RegisterStruct(group string, s interface{}) {
+	if c.parsed {
+		panic(ErrParsed)
+	}
+
+	c.getGroupByName(group).registerStruct(s)
+}
+
 // RegisterCliOpt registers the option into the group.
 //
 // It registers the option to not only all the common parsers but also the CLI
@@ -317,6 +337,16 @@ func (c *Config) RegisterOpts(group string, opts []Opt) {
 	}
 }
 
+func (c *Config) getGroupByName(name string) OptGroup {
+	name = c.getGroupName(name)
+	g, ok := c.groups[name]
+	if !ok {
+		g = NewOptGroup(name)
+		c.groups[name] = g
+	}
+	return g
+}
+
 // registerOpt registers the option into the group.
 //
 // If the group name is "", it's regarded as the default group.
@@ -328,14 +358,7 @@ func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 		panic(ErrParsed)
 	}
 
-	group = c.getGroupName(group)
-	g, ok := c.groups[group]
-	if !ok {
-		g = NewOptGroup(group)
-		c.groups[group] = g
-	}
-
-	g.registerOpt(cli, opt)
+	c.getGroupByName(group).registerOpt(cli, opt)
 }
 
 func (c *Config) getGroupName(name string) string {
