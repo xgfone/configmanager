@@ -105,26 +105,26 @@ You also register a struct then use it.
 ```go
 func main() {
     type S struct {
-		Name    string `name:"name" cli:"1" default:"Aaron" help:"The user name"`
-		Age     int8   `name:"age" cli:"t"`
-		Address string `cli:"true"`
-		Ignore  string `name:"-"`
-	}
+        Name    string `name:"name" cli:"1" default:"Aaron" help:"The user name"`
+        Age     int8   `name:"age" cli:"t"`
+        Address string `cli:"true"`
+        Ignore  string `name:"-"`
+    }
 
-	s := S{}
-	Conf.RegisterStruct("", &s)
-	if err := Conf.Parse([]string{"-age", "18", "-Address", "China"}); err != nil {
-		fmt.Println(err)
-		return
-	}
+    s := S{}
+    Conf.RegisterStruct("", &s)
+    if err := Conf.Parse([]string{"-age", "18", "-Address", "China"}); err != nil {
+        fmt.Println(err)
+        return
+    }
 
-	fmt.Printf("Name: %s\n", s.Name)
-	fmt.Printf("Age: %d\n", s.Age)
-	fmt.Printf("Address: %s\n", s.Address)
+    fmt.Printf("Name: %s\n", s.Name)
+    fmt.Printf("Age: %d\n", s.Age)
+    fmt.Printf("Address: %s\n", s.Address)
 
     // Or
     fmt.Printf("Name: %s\n", Conf.String("name"))
-	fmt.Printf("Age: %d\n", Conf.Int8("age"))
-	fmt.Printf("Address: %s\n", Conf.String("Address"))
+    fmt.Printf("Age: %d\n", Conf.Int8("age"))
+    fmt.Printf("Address: %s\n", Conf.String("Address"))
 }
 ```
