@@ -106,7 +106,7 @@ You also register a struct then use it.
 func main() {
     type S struct {
         Name    string `name:"name" cli:"1" default:"Aaron" help:"The user name"`
-        Age     int8   `name:"age" cli:"t"`
+        Age     int8   `name:"age" cli:"t" default:"123"`
         Address string `cli:"true"`
         Ignore  string `name:"-"`
     }
