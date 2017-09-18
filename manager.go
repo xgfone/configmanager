@@ -91,6 +91,10 @@ type Config struct {
 	// starting with the prefix "-", "--" or others, etc.
 	Args []string
 
+	// If true, when registering the option, it will the verbose information.
+	// You should set it before registering the option.
+	Debug bool
+
 	defaultGroup string
 
 	parsed  bool
@@ -181,7 +185,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 		arguments); err == nil {
 		for gname, opts := range groups {
 			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(opts, c.NotEmpty); err != nil {
+				if err = group.setOptions(opts, c.NotEmpty, c.Debug); err != nil {
 					return err
 				}
 			}
@@ -208,7 +212,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 
 		for gname, options := range groups {
 			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(options, c.NotEmpty); err != nil {
+				if err = group.setOptions(options, c.NotEmpty, c.Debug); err != nil {
 					return nil
 				}
 			}
@@ -217,7 +221,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
-		if err = group.checkRequiredOption(c.NotEmpty); err != nil {
+		if err = group.checkRequiredOption(c.NotEmpty, c.Debug); err != nil {
 			return err
 		}
 	}
@@ -292,7 +296,7 @@ func (c *Config) RegisterStruct(group string, s interface{}) {
 		panic(ErrParsed)
 	}
 
-	c.getGroupByName(group).registerStruct(s)
+	c.getGroupByName(group).registerStruct(s, c.Debug)
 }
 
 // RegisterCliOpt registers the option into the group.
@@ -358,7 +362,7 @@ func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 		panic(ErrParsed)
 	}
 
-	c.getGroupByName(group).registerOpt(cli, opt)
+	c.getGroupByName(group).registerOpt(cli, opt, c.Debug)
 }
 
 func (c *Config) getGroupName(name string) string {
