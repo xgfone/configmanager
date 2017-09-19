@@ -188,8 +188,8 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 		}
 
 		group := g
-		if gname := strings.TrimSpace(field.Tag.Get("group")); gname != "" {
-			group = c.getGroupByName(gname)
+		if gname, ok := field.Tag.Lookup("group"); ok {
+			group = c.getGroupByName(strings.TrimSpace(gname))
 		}
 
 		group.registerOpt(cli, newBaseOpt(short, name, _default, help, _type), debug)

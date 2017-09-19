@@ -282,7 +282,8 @@ func (c *Config) AddParser(parser Parser) *Config {
 // RegisterStruct registers the field name of the struct as options into the
 // group "group".
 //
-// If the group name is "", it's regarded as the default group.
+// If the group name is "", it's regarded as the default group. And the struct
+// must be a pointer to a struct variable, or it will panic.
 //
 // The tag of the field supports "name", "short", "default", "help", which are
 // equal to the name, the short name, the default, the help of the option.
@@ -292,12 +293,12 @@ func (c *Config) AddParser(parser Parser) *Config {
 // also registered into the CLI parser. Moreover, you can use the tag "group"
 // to reset the group name, that's, the group of the field with the tag "group"
 // is different to the group of the whole struct. If the value of the tag
-// "group" is empty, it will be ignored. If having no the tag "name", the name
-// of the option is the lower-case of the field name.
+// "group" is empty, the default group will be used in preference.
+//
+// Notice: If having no the tag "name", the name of the option is the lower-case
+// of the field name.
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
-//
-// Notice: the struct must be a pointer to a struct variable, or it will panic.
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	if c.parsed {
 		panic(ErrParsed)
