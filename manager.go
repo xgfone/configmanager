@@ -87,13 +87,13 @@ type Config struct {
 	// having the value.
 	NotEmpty bool
 
-	// Args is the rest of the CLI arguments, which are not the options
-	// starting with the prefix "-", "--" or others, etc.
-	Args []string
-
 	// If true, when registering the option, it will the verbose information.
 	// You should set it before registering the option.
 	Debug bool
+
+	// Args is the rest of the CLI arguments, which are not the options
+	// starting with the prefix "-", "--" or others, etc.
+	Args []string
 
 	defaultGroup string
 
@@ -279,14 +279,20 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
-// RegisterStruct registers the field name of the struct as options.
+// RegisterStruct registers the field name of the struct as options into the
+// group "group".
+//
+// If the group name is "", it's regarded as the default group.
 //
 // The tag of the field supports "name", "short", "default", "help", which are
 // equal to the name, the short name, the default, the help of the option.
 // If you want to ignore a certain field, just set the tag "name" to "-",
 // such as `name:"-"`. The field also contains the tag "cli", whose value maybe
 // "1", "t", "T", "true", "True", "TRUE", and which represents the option is
-// also registered into the CLI parser.
+// also registered into the CLI parser. Moreover, you can use the tag "group"
+// to reset the group name, that's, the group of the field with the tag "group"
+// is different to the group of the whole struct. If the value of the tag
+// "group" is empty, it will be ignored.
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 //
@@ -296,7 +302,7 @@ func (c *Config) RegisterStruct(group string, s interface{}) {
 		panic(ErrParsed)
 	}
 
-	c.getGroupByName(group).registerStruct(s, c.Debug)
+	c.getGroupByName(group).registerStruct(c, s, c.Debug)
 }
 
 // RegisterCliOpt registers the option into the group.

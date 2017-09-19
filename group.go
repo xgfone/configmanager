@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type option struct {
@@ -128,7 +129,7 @@ func (g OptGroup) checkRequiredOption(notEmpty bool, debug bool) (err error) {
 	return nil
 }
 
-func (g OptGroup) registerStruct(s interface{}, debug bool) {
+func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 	sv := reflect.ValueOf(s)
 	if sv.IsNil() || !sv.IsValid() {
 		panic(fmt.Errorf("the struct is nil or invalid"))
@@ -151,14 +152,14 @@ func (g OptGroup) registerStruct(s interface{}, debug bool) {
 		cli := false
 
 		// Get the name from the tag "name".
-		if _name := field.Tag.Get("name"); _name != "" {
+		if _name := strings.TrimSpace(field.Tag.Get("name")); _name != "" {
 			if _name == "-" {
 				continue
 			}
 			name = _name
 		}
 
-		if _cli := field.Tag.Get("cli"); _cli != "" {
+		if _cli := strings.TrimSpace(field.Tag.Get("cli")); _cli != "" {
 			switch _cli {
 			case "1", "t", "T", "true", "True", "TRUE":
 				cli = true
@@ -171,23 +172,28 @@ func (g OptGroup) registerStruct(s interface{}, debug bool) {
 		}
 
 		// Get the short name from the tag "short"
-		short := field.Tag.Get("short")
+		short := strings.TrimSpace(field.Tag.Get("short"))
 
 		// Get the help doc from the tag "help"
-		help := field.Tag.Get("help")
+		help := strings.TrimSpace(field.Tag.Get("help"))
 
 		// Get the default value from the tag "default"
 		var err error
 		var _default interface{}
-		if field.Tag.Get("default") != "" {
+		if strings.TrimSpace(field.Tag.Get("default")) != "" {
 			_default, err = parseOpt(field.Tag.Get("default"), _type)
 			if err != nil {
 				panic(fmt.Errorf("fail to parse the default: %s", err))
 			}
 		}
 
-		g.registerOpt(cli, newBaseOpt(short, name, _default, help, _type), debug)
-		g.fields[name] = sv.Field(i)
+		group := g
+		if gname := strings.TrimSpace(field.Tag.Get("group")); gname != "" {
+			group = c.getGroupByName(gname)
+		}
+
+		group.registerOpt(cli, newBaseOpt(short, name, _default, help, _type), debug)
+		group.fields[name] = sv.Field(i)
 	}
 }
 
