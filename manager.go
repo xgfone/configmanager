@@ -298,6 +298,8 @@ func (c *Config) AddParser(parser Parser) *Config {
 // Notice: If having no the tag "name", the name of the option is the lower-case
 // of the field name.
 //
+// Notice: The struct supports the nested struct, but not the pointer field.
+//
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	if c.parsed {

@@ -49,11 +49,15 @@ func ExampleConfig() {
 }
 
 func ExampleConfig_RegisterStruct() {
+	type Address struct {
+		Address string `cli:"true"`
+	}
+
 	type S struct {
-		Name    string `name:"name" cli:"1" default:"Aaron"`
-		Age     int8   `cli:"t" default:"123"`
-		Address string `cli:"true" group:"group"`
-		Ignore  string `name:"-"`
+		Name    string  `name:"name" cli:"1" default:"Aaron"`
+		Age     int8    `cli:"t" default:"123"`
+		Address Address `group:"group"`
+		Ignore  string  `name:"-"`
 	}
 
 	s := S{}
@@ -65,7 +69,7 @@ func ExampleConfig_RegisterStruct() {
 
 	fmt.Printf("Name: %s\n", s.Name)
 	fmt.Printf("Age: %d\n", s.Age)
-	fmt.Printf("Address: %s\n", s.Address)
+	fmt.Printf("Address: %s\n", s.Address.Address)
 
 	// Output:
 	// Name: Aaron

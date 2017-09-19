@@ -132,21 +132,50 @@ func (g OptGroup) checkRequiredOption(notEmpty bool, debug bool) (err error) {
 func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 	sv := reflect.ValueOf(s)
 	if sv.IsNil() || !sv.IsValid() {
-		panic(fmt.Errorf("the struct is nil or invalid"))
+		panic(fmt.Errorf("the struct is invalid or can't be set"))
 	}
 
-	if sv.Kind() != reflect.Ptr || sv.Elem().Kind() != reflect.Struct {
-		panic(fmt.Errorf("the struct is not a pointer to the struct"))
+	if sv.Kind() == reflect.Ptr {
+		sv = sv.Elem()
 	}
 
-	// Get the struct that the pointer points to
-	sv = sv.Elem()
+	if sv.Kind() != reflect.Struct {
+		panic(fmt.Errorf("the struct is not a struct"))
+	}
+
+	g.registerStructByValue(c, sv, debug)
+}
+
+func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, debug bool) {
+	if sv.Kind() == reflect.Ptr {
+		sv = sv.Elem()
+	}
 	st := sv.Type()
 
 	// Register the field as the option
 	num := sv.NumField()
 	for i := 0; i < num; i++ {
 		field := st.Field(i)
+		fieldV := sv.Field(i)
+
+		// Check whether the field can be set.
+		if !fieldV.CanSet() {
+			panic(fmt.Errorf("the field %s can't be set", field.Name))
+		}
+
+		// Get the group
+		group := g
+		gname := g.name
+		if name, ok := field.Tag.Lookup("group"); ok {
+			gname = c.getGroupName(strings.TrimSpace(name))
+			group = c.getGroupByName(gname)
+		}
+
+		// Check whether the field is the struct.
+		if t := field.Type.Kind(); t == reflect.Struct {
+			group.registerStructByValue(c, fieldV, debug)
+			continue
+		}
 
 		name := strings.ToLower(field.Name)
 		cli := false
@@ -168,7 +197,7 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 
 		_type := kind2optType[field.Type.Kind()]
 		if _type == 0 {
-			panic(fmt.Errorf("don't support the type %s", field.Type.Name()))
+			panic(fmt.Errorf("don't support the type %s", field.Type.Kind()))
 		}
 
 		// Get the short name from the tag "short"
@@ -183,17 +212,14 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 		if strings.TrimSpace(field.Tag.Get("default")) != "" {
 			_default, err = parseOpt(field.Tag.Get("default"), _type)
 			if err != nil {
-				panic(fmt.Errorf("fail to parse the default: %s", err))
+				panic(fmt.Errorf("can't parse the default in the field %s: %s",
+					field.Name, err))
 			}
 		}
 
-		group := g
-		if gname, ok := field.Tag.Lookup("group"); ok {
-			group = c.getGroupByName(strings.TrimSpace(gname))
-		}
-
-		group.registerOpt(cli, newBaseOpt(short, name, _default, help, _type), debug)
-		group.fields[name] = sv.Field(i)
+		opt := newBaseOpt(short, name, _default, help, _type)
+		group.registerOpt(cli, opt, debug)
+		group.fields[name] = fieldV
 	}
 }
 
