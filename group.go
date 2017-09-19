@@ -143,10 +143,12 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 		panic(fmt.Errorf("the struct is not a struct"))
 	}
 
-	g.registerStructByValue(c, sv, debug)
+	g.registerStructByValue(c, sv, false, debug)
 }
 
-func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, debug bool) {
+func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
+	debug bool) {
+
 	if sv.Kind() == reflect.Ptr {
 		sv = sv.Elem()
 	}
@@ -171,14 +173,21 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, debug bool)
 			group = c.getGroupByName(gname)
 		}
 
+		cli := isCli
+		if _cli := strings.TrimSpace(field.Tag.Get("cli")); _cli != "" {
+			switch _cli {
+			case "1", "t", "T", "true", "True", "TRUE":
+				cli = true
+			}
+		}
+
 		// Check whether the field is the struct.
 		if t := field.Type.Kind(); t == reflect.Struct {
-			group.registerStructByValue(c, fieldV, debug)
+			group.registerStructByValue(c, fieldV, cli, debug)
 			continue
 		}
 
 		name := strings.ToLower(field.Name)
-		cli := false
 
 		// Get the name from the tag "name".
 		if _name := strings.TrimSpace(field.Tag.Get("name")); _name != "" {
@@ -186,13 +195,6 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, debug bool)
 				continue
 			}
 			name = _name
-		}
-
-		if _cli := strings.TrimSpace(field.Tag.Get("cli")); _cli != "" {
-			switch _cli {
-			case "1", "t", "T", "true", "True", "TRUE":
-				cli = true
-			}
 		}
 
 		_type := kind2optType[field.Type.Kind()]

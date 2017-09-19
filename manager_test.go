@@ -50,13 +50,13 @@ func ExampleConfig() {
 
 func ExampleConfig_RegisterStruct() {
 	type Address struct {
-		Address string `cli:"true"`
+		Address string
 	}
 
 	type S struct {
 		Name    string  `name:"name" cli:"1" default:"Aaron"`
 		Age     int8    `cli:"t" default:"123"`
-		Address Address `group:"group"`
+		Address Address `group:"group" cli:"true"`
 		Ignore  string  `name:"-"`
 	}
 
