@@ -160,6 +160,15 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
 		field := st.Field(i)
 		fieldV := sv.Field(i)
 
+		// Get the name from the tag "name".
+		name := strings.ToLower(field.Name)
+		if _name := strings.TrimSpace(field.Tag.Get("name")); _name != "" {
+			if _name == "-" {
+				continue
+			}
+			name = _name
+		}
+
 		// Check whether the field can be set.
 		if !fieldV.CanSet() {
 			panic(fmt.Errorf("the field %s can't be set", field.Name))
@@ -185,16 +194,6 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
 		if t := field.Type.Kind(); t == reflect.Struct {
 			group.registerStructByValue(c, fieldV, cli, debug)
 			continue
-		}
-
-		name := strings.ToLower(field.Name)
-
-		// Get the name from the tag "name".
-		if _name := strings.TrimSpace(field.Tag.Get("name")); _name != "" {
-			if _name == "-" {
-				continue
-			}
-			name = _name
 		}
 
 		_type := kind2optType[field.Type.Kind()]
