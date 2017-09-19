@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 func inMap(m map[string]interface{}, key string) bool {
@@ -62,7 +63,7 @@ func ToInt64(_v interface{}) (v int64, err error) {
 	case string:
 		return strconv.ParseInt(_v.(string), 10, 64)
 	default:
-		err = fmt.Errorf("unknown type of %t", _v)
+		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
@@ -83,7 +84,7 @@ func ToUint64(_v interface{}) (v uint64, err error) {
 	case string:
 		return strconv.ParseUint(_v.(string), 10, 64)
 	default:
-		err = fmt.Errorf("unknown type of %t", _v)
+		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
@@ -104,7 +105,7 @@ func ToFloat64(_v interface{}) (v float64, err error) {
 	case string:
 		return strconv.ParseFloat(_v.(string), 64)
 	default:
-		err = fmt.Errorf("unknown type of %t", _v)
+		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
@@ -122,7 +123,152 @@ func ToString(_v interface{}) (v string, err error) {
 	case float32, float64:
 		v = fmt.Sprintf("%f", _v)
 	default:
-		err = fmt.Errorf("unknown type of %t", _v)
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToStringSlice does the best to convert a certain value to []string.
+func ToStringSlice(_v interface{}) (v []string, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]string, 0, len(vs))
+		for _, s := range vs {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				v = append(v, s)
+			}
+		}
+	case []string:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToIntSlice does the best to convert a certain value to []int.
+func ToIntSlice(_v interface{}) (v []int, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]int, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := ToInt64(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, int(i))
+		}
+	case []int:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToInt64Slice does the best to convert a certain value to []int64.
+func ToInt64Slice(_v interface{}) (v []int64, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]int64, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := ToInt64(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, i)
+		}
+	case []int64:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToUintSlice does the best to convert a certain value to []uint.
+func ToUintSlice(_v interface{}) (v []uint, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]uint, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := ToUint64(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, uint(i))
+		}
+	case []uint:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToUint64Slice does the best to convert a certain value to []uint64.
+func ToUint64Slice(_v interface{}) (v []uint64, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]uint64, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := ToUint64(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, i)
+		}
+	case []uint64:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToFloat64Slice does the best to convert a certain value to []float64.
+func ToFloat64Slice(_v interface{}) (v []float64, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]float64, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := ToFloat64(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, i)
+		}
+	case []float64:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }

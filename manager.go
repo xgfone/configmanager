@@ -623,3 +623,93 @@ func (c *Config) Float64D(name string, _default float64) float64 {
 func (c *Config) Float64(name string) float64 {
 	return c.Group("").Float64(name)
 }
+
+// StringsE is equal to c.Group("").StringsE(name).
+func (c *Config) StringsE(name string) ([]string, error) {
+	return c.Group("").StringsE(name)
+}
+
+// StringsD is equal to c.Group("").StringsD(name, _default).
+func (c *Config) StringsD(name string, _default []string) []string {
+	return c.Group("").StringsD(name, _default)
+}
+
+// Strings is equal to c.Group("").Strings(name).
+func (c *Config) Strings(name string) []string {
+	return c.Group("").Strings(name)
+}
+
+// IntsE is equal to c.Group("").IntsE(name).
+func (c *Config) IntsE(name string) ([]int, error) {
+	return c.Group("").IntsE(name)
+}
+
+// IntsD is equal to c.Group("").IntsD(name, _default).
+func (c *Config) IntsD(name string, _default []int) []int {
+	return c.Group("").IntsD(name, _default)
+}
+
+// Ints is equal to c.Group("").Ints(name).
+func (c *Config) Ints(name string) []int {
+	return c.Group("").Ints(name)
+}
+
+// Int64sE is equal to c.Group("").Int64sE(name).
+func (c *Config) Int64sE(name string) ([]int64, error) {
+	return c.Group("").Int64sE(name)
+}
+
+// Int64sD is equal to c.Group("").Int64sD(name, _default).
+func (c *Config) Int64sD(name string, _default []int64) []int64 {
+	return c.Group("").Int64sD(name, _default)
+}
+
+// Int64s is equal to c.Group("").Int64s(name).
+func (c *Config) Int64s(name string) []int64 {
+	return c.Group("").Int64s(name)
+}
+
+// UintsE is equal to c.Group("").UintsE(name).
+func (c *Config) UintsE(name string) ([]uint, error) {
+	return c.Group("").UintsE(name)
+}
+
+// UintsD is equal to c.Group("").UintsD(name, _default).
+func (c *Config) UintsD(name string, _default []uint) []uint {
+	return c.Group("").UintsD(name, _default)
+}
+
+// Uints is equal to c.Group("").Uints(name).
+func (c *Config) Uints(name string) []uint {
+	return c.Group("").Uints(name)
+}
+
+// Uint64sE is equal to c.Group("").Uint64sE(name).
+func (c *Config) Uint64sE(name string) ([]uint64, error) {
+	return c.Group("").Uint64sE(name)
+}
+
+// Uint64sD is equal to c.Group("").Uint64sD(name, _default).
+func (c *Config) Uint64sD(name string, _default []uint64) []uint64 {
+	return c.Group("").Uint64sD(name, _default)
+}
+
+// Uint64s is equal to c.Group("").Uint64s(name).
+func (c *Config) Uint64s(name string) []uint64 {
+	return c.Group("").Uint64s(name)
+}
+
+// Float64sE is equal to c.Group("").Float64sE(name).
+func (c *Config) Float64sE(name string) ([]float64, error) {
+	return c.Group("").Float64sE(name)
+}
+
+// Float64sD is equal to c.Group("").Float64sD(name, _default).
+func (c *Config) Float64sD(name string, _default []float64) []float64 {
+	return c.Group("").Float64sD(name, _default)
+}
+
+// Float64s is equal to c.Group("").Float64s(name).
+func (c *Config) Float64s(name string) []float64 {
+	return c.Group("").Float64s(name)
+}

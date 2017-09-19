@@ -33,6 +33,7 @@ const (
 	int64sType
 	uintsType
 	uint64sType
+	float64sType
 )
 
 var optTypeMap = map[optType]string{
@@ -52,11 +53,12 @@ var optTypeMap = map[optType]string{
 	float32Type: "float32",
 	float64Type: "float64",
 
-	stringsType: "[]string",
-	intsType:    "[]int",
-	int64sType:  "[]int64",
-	uintsType:   "[]uint",
-	uint64sType: "[]uint64",
+	stringsType:  "[]string",
+	intsType:     "[]int",
+	int64sType:   "[]int64",
+	uintsType:    "[]uint",
+	uint64sType:  "[]uint64",
+	float64sType: "[]float64",
 }
 
 var kind2optType = map[reflect.Kind]optType{
@@ -74,6 +76,29 @@ var kind2optType = map[reflect.Kind]optType{
 	reflect.Uint64:  uint64Type,
 	reflect.Float32: float32Type,
 	reflect.Float64: float64Type,
+}
+
+func getOptType(v reflect.Value) optType {
+	if t, ok := kind2optType[v.Kind()]; ok {
+		return t
+	}
+
+	switch v.Interface().(type) {
+	case []string:
+		return stringsType
+	case []int:
+		return intsType
+	case []int64:
+		return int64sType
+	case []uint:
+		return uintsType
+	case []uint64:
+		return uint64sType
+	case []float64:
+		return float64sType
+	default:
+		panic(fmt.Errorf("doesn't support the type %s", v.Type().Name()))
+	}
 }
 
 type baseOpt struct {
@@ -169,6 +194,18 @@ func (o baseOpt) Default() interface{} {
 		return o._default.(float32)
 	case float64Type:
 		return o._default.(float64)
+	case stringsType:
+		return o._default.([]string)
+	case intsType:
+		return o._default.([]int)
+	case int64sType:
+		return o._default.([]int64)
+	case uintsType:
+		return o._default.([]uint)
+	case uint64sType:
+		return o._default.([]uint64)
+	case float64sType:
+		return o._default.([]float64)
 	default:
 		panic(fmt.Errorf("don't support the type %s", o._type))
 	}
@@ -191,6 +228,18 @@ func parseOpt(data interface{}, _type optType) (v interface{}, err error) {
 		v, err = ToUint64(data)
 	case float32Type, float64Type:
 		v, err = ToFloat64(data)
+	case stringsType:
+		return ToStringSlice(data)
+	case intsType:
+		return ToIntSlice(data)
+	case int64sType:
+		return ToInt64Slice(data)
+	case uintsType:
+		return ToUintSlice(data)
+	case uint64sType:
+		return ToUint64Slice(data)
+	case float64sType:
+		return ToFloat64Slice(data)
 	default:
 		err = fmt.Errorf("don't support the type %s", _type)
 	}
@@ -295,6 +344,36 @@ func Float64Opt(short, name string, _default float64, help string) ValidatorChai
 	return newBaseOpt(short, name, _default, help, float64Type)
 }
 
+// StringsOpt return a new []string option.
+func StringsOpt(short, name string, _default []string, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, float64sType)
+}
+
+// IntsOpt return a new []int option.
+func IntsOpt(short, name string, _default []int, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, intsType)
+}
+
+// Int64sOpt return a new []int64 option.
+func Int64sOpt(short, name string, _default []int64, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, int64sType)
+}
+
+// UintsOpt return a new []uint option.
+func UintsOpt(short, name string, _default []uint, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, uintsType)
+}
+
+// Uint64sOpt return a new []uint64 option.
+func Uint64sOpt(short, name string, _default []uint64, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, uint64sType)
+}
+
+// Float64sOpt return a new []float64 option.
+func Float64sOpt(short, name string, _default []float64, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, float64sType)
+}
+
 // Bool is equal to BoolOpt("", name, _default, help).
 func Bool(name string, _default bool, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, boolType)
@@ -363,4 +442,34 @@ func Float32(name string, _default float32, help string) ValidatorChainOpt {
 // Float64 is equal to Float64Opt("", name, _default, help).
 func Float64(name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, float64Type)
+}
+
+// Strings is equal to StringsOpt("", name, _default, help).
+func Strings(name string, _default []string, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, stringsType)
+}
+
+// Ints is equal to IntsOpt("", name, _default, help).
+func Ints(name string, _default []int, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, intsType)
+}
+
+// Int64s is equal to Int64sOpt("", name, _default, help).
+func Int64s(name string, _default []int64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, int64sType)
+}
+
+// Uints is equal to UintsOpt("", name, _default, help).
+func Uints(name string, _default []uint, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uintsType)
+}
+
+// Uint64s is equal to Uint64sOpt("", name, _default, help).
+func Uint64s(name string, _default []uint64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, uint64sType)
+}
+
+// Float64s is equal to Float64sOpt("", name, _default, help).
+func Float64s(name string, _default []float64, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, float64sType)
 }

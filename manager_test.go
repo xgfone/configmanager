@@ -50,7 +50,7 @@ func ExampleConfig() {
 
 func ExampleConfig_RegisterStruct() {
 	type Address struct {
-		Address string
+		Address []string
 	}
 
 	type S struct {
@@ -62,7 +62,7 @@ func ExampleConfig_RegisterStruct() {
 
 	s := S{}
 	Conf.RegisterStruct("", &s)
-	if err := Conf.Parse([]string{"-age", "18", "-group_address", "China"}); err != nil {
+	if err := Conf.Parse([]string{"-age", "18", "-group_address", "Beijing,Shanghai"}); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -74,5 +74,5 @@ func ExampleConfig_RegisterStruct() {
 	// Output:
 	// Name: Aaron
 	// Age: 18
-	// Address: China
+	// Address: [Beijing Shanghai]
 }
