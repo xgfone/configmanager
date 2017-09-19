@@ -148,7 +148,7 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 	for i := 0; i < num; i++ {
 		field := st.Field(i)
 
-		name := field.Name
+		name := strings.ToLower(field.Name)
 		cli := false
 
 		// Get the name from the tag "name".

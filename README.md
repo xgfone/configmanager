@@ -106,14 +106,14 @@ You also register a struct then use it.
 func main() {
     type S struct {
         Name    string `name:"name" cli:"1" default:"Aaron" help:"The user name"`
-        Age     int8   `name:"age" cli:"t" default:"123"`
+        Age     int8   `cli:"t" default:"123"`
         Address string `cli:"true"`
         Ignore  string `name:"-"`
     }
 
     s := S{}
     Conf.RegisterStruct("", &s)
-    if err := Conf.Parse([]string{"-age", "18", "-Address", "China"}); err != nil {
+    if err := Conf.Parse([]string{"-age", "18", "-address", "China"}); err != nil {
         fmt.Println(err)
         return
     }

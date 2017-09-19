@@ -292,7 +292,8 @@ func (c *Config) AddParser(parser Parser) *Config {
 // also registered into the CLI parser. Moreover, you can use the tag "group"
 // to reset the group name, that's, the group of the field with the tag "group"
 // is different to the group of the whole struct. If the value of the tag
-// "group" is empty, it will be ignored.
+// "group" is empty, it will be ignored. If having no the tag "name", the name
+// of the option is the lower-case of the field name.
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 //

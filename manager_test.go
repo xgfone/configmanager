@@ -51,14 +51,14 @@ func ExampleConfig() {
 func ExampleConfig_RegisterStruct() {
 	type S struct {
 		Name    string `name:"name" cli:"1" default:"Aaron"`
-		Age     int8   `name:"age" cli:"t" default:"123"`
+		Age     int8   `cli:"t" default:"123"`
 		Address string `cli:"true" group:"group"`
 		Ignore  string `name:"-"`
 	}
 
 	s := S{}
 	Conf.RegisterStruct("", &s)
-	if err := Conf.Parse([]string{"-age", "18", "-group_Address", "China"}); err != nil {
+	if err := Conf.Parse([]string{"-age", "18", "-group_address", "China"}); err != nil {
 		fmt.Println(err)
 		return
 	}
