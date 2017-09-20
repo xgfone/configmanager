@@ -72,7 +72,7 @@ func main() {
 }
 ```
 
-You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`, which you change it by modifying the value of the variable `IniParserOptName`.
+You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`, which you change it by modifying the value of the variable `IniParserOptName`. Notice: `NewDefault()` does not add the environment variable parser, and you need to add it by hand, such as `NewDefault().AddParser(NewEnvVarParser(""))`.
 
 The package has created a global default `Config` created by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
 ```go
