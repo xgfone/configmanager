@@ -300,8 +300,8 @@ type envVarParser struct {
 // NewEnvVarParser returns a new environment variable parser.
 //
 // For the environment variable name, it's the format "PREFIX_GROUP_OPTION".
-// If the prefix is empty, it's "GROUP_OPTION". For the default group, but,
-// it's "PREFIX_OPTION". When the prefix is empty and the group is the default,
+// If the prefix is empty, it's "GROUP_OPTION". For the default group, it's
+// "PREFIX_OPTION". When the prefix is empty and the group is the default,
 // it's "OPTION". "GROUP" is the group name, and "OPTION" is the option name.
 //
 // Notice: the prefix, the group name and the option name will be converted to
