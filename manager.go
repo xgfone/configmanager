@@ -270,7 +270,12 @@ func (c *Config) Parsed() bool {
 
 // AddParser adds a named parser.
 //
-// It will panic if the parser has been added.
+// You can add many parsers, which are sequential, that's, the arguments needed
+// by the next parser can be acquired from the results parsed by the previous
+// parser.
+//
+// Notice: The parser having the same name has only been registered once. Or it
+// will panic..
 func (c *Config) AddParser(parser Parser) *Config {
 	if c.parsed {
 		panic(ErrParsed)
