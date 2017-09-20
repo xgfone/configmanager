@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func ExampleConfig() {
 	validators := []Validator{NewStrLenValidator(1, 10)}
@@ -75,4 +78,30 @@ func ExampleConfig_RegisterStruct() {
 	// Name: Aaron
 	// Age: 18
 	// Address: [Beijing Shanghai]
+}
+
+func ExampleNewEnvVarParser() {
+	// Simulate the environment variable.
+	os.Setenv("TEST_VAR1", "abc")
+	os.Setenv("TEST_GROUP_VAR2", "123")
+
+	cli := NewDefaultFlagCliParser()
+	env := NewEnvVarParser("test")
+	conf := NewConfig(cli).AddParser(env)
+
+	opt1 := Str("var1", "", "the environment var 1")
+	opt2 := Int("var2", 0, "the environment var 2")
+	conf.RegisterOpt("", opt1)
+	conf.RegisterOpt("group", opt2)
+	if err := conf.Parse(nil); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("var1=%s\n", conf.String("var1"))
+	fmt.Printf("var2=%d\n", conf.Group("group").Int("var2"))
+
+	// Output:
+	// var1=abc
+	// var2=123
 }

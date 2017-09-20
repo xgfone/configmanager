@@ -292,3 +292,72 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 	}
 	return
 }
+
+type envVarParser struct {
+	prefix string
+}
+
+// NewEnvVarParser returns a new environment variable parser.
+//
+// For the environment variable name, it's the format "PREFIX_GROUP_OPTION".
+// If the prefix is empty, it's "GROUP_OPTION". For the default group, but,
+// it's "PREFIX_OPTION". When the prefix is empty and the group is the default,
+// it's "OPTION". "GROUP" is the group name, and "OPTION" is the option name.
+//
+// Notice: the prefix, the group name and the option name will be converted to
+// the upper.
+func NewEnvVarParser(prefix string) Parser {
+	return envVarParser{prefix: prefix}
+}
+
+func (e envVarParser) Name() string {
+	return "env"
+}
+
+func (e envVarParser) GetKeys() map[string]bool {
+	return nil
+}
+
+func (e envVarParser) Parse(_default string, opts map[string][]Opt,
+	conf map[string]interface{}) (results map[string]map[string]interface{},
+	err error) {
+	// Initialize the prefix
+	prefix := e.prefix
+	if prefix != "" {
+		prefix += "_"
+	}
+
+	// Convert the option to the variable name
+	env2opts := make(map[string][]string, len(opts)*8)
+	results = make(map[string]map[string]interface{}, len(opts))
+	for group, _opts := range opts {
+		var gname string
+		if group != _default {
+			gname = group + "_"
+		}
+		for _, opt := range _opts {
+			e := fmt.Sprintf("%s%s%s", prefix, gname, opt.Name())
+			env2opts[strings.ToUpper(e)] = []string{group, opt.Name()}
+		}
+
+		results[group] = make(map[string]interface{}, len(_opts))
+	}
+
+	// Convert the environment variable into a map.
+	envs := os.Environ()
+	infos := make(map[string]string, len(envs))
+	for _, env := range envs {
+		items := strings.SplitN(env, "=", 2)
+		if len(items) == 2 {
+			infos[items[0]] = items[1]
+		}
+	}
+
+	// Get the option value from the environment variable.
+	for name, groupOpt := range env2opts {
+		if v, ok := infos[name]; ok {
+			results[groupOpt[0]][groupOpt[1]] = v
+		}
+	}
+	return
+}
