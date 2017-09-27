@@ -5,6 +5,8 @@ The inspiration is from [oslo.config](https://github.com/openstack/oslo.config),
 
 **NOTICE: The API has been stable.**
 
+The current version is `v2`, the biggest difference of which to `v1` is to remove the method `GetKeys()` from the parser interface `Parser`. But you can use the branch [v1](https://github.com/xgfone/go-config/tree/v1).
+
 ## Principle of Work
 
 1. Create a `Config` engine.
@@ -15,10 +17,8 @@ The inspiration is from [oslo.config](https://github.com/openstack/oslo.config),
     3. Call the CLI parser with the CLI optons and arguments to parse.
     4. Get all the registered common options.
     5. Call each other parsers according to the order that they are registered.
-        1. Call the method `GetKeys()` of the parser to get the keys of all the configurations that the parser needs.
-        2. Get the values of the keys above from the default group that has been parsed.
-        3. Call the method `Parse()` of the parser with the registered options and the configurations, and get the parsed result.
-        4. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
+        1. Call the method `Parse()` of the parser with the registered options and the parsed configurations, then get the parsed result.
+        2. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
     6. Check whether some required options have neither the parsed value nor the default value.
 
 

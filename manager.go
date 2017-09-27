@@ -208,12 +208,7 @@ func (c *Config) Parse(arguments []string) (err error) {
 		groupOpts[name] = group.getAllOpts(false)
 	}
 	for _, parser := range c.parsers {
-		args, err := c.getValuesByKeys(parser.Name(), parser.GetKeys())
-		if err != nil {
-			return err
-		}
-
-		groups, err := parser.Parse(c.defaultGroup, groupOpts, args)
+		groups, err := parser.Parse(c.defaultGroup, groupOpts, c.Group("").values)
 		if err != nil {
 			return err
 		}
@@ -232,32 +227,6 @@ func (c *Config) Parse(arguments []string) (err error) {
 		if err = group.checkRequiredOption(c.NotEmpty, c.Debug); err != nil {
 			return err
 		}
-	}
-
-	return
-}
-
-func (c *Config) getValuesByKeys(name string, keys map[string]bool) (
-	args map[string]interface{}, err error) {
-	if len(keys) == 0 {
-		return
-	}
-
-	group := c.Group(c.defaultGroup)
-	args = make(map[string]interface{}, len(keys))
-	for key, required := range keys {
-		if v := group.Value(key); v != nil {
-			args[key] = v
-			continue
-		}
-
-		if !required {
-			continue
-		}
-
-		emsg := "the option %s is missing, which is reqired by the parser %s"
-		err = fmt.Errorf(emsg, key, name)
-		return
 	}
 
 	return

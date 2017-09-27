@@ -15,15 +15,6 @@ type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
 
-	// If the parser needs some configurations, it can return all those names
-	// by the method, and mark whether they must be required.
-	//
-	// For example, the method returns {"ip": true, "port": false},
-	// which indicates the configuration must pass the parser the value of the
-	// option 'ip' when calling the method Parse, but the value of 'port' is
-	// optional. These option values will be acquired from the default group.
-	GetKeys() map[string]bool
-
 	// Parse the value of the registered options.
 	//
 	// The first argument, defaultGroupName, is the name of the default group.
@@ -31,17 +22,15 @@ type Parser interface {
 	// The second argument, opts, is the parsed option information. The key is
 	// the group name, and the value is the parsed option list.
 	//
-	// The third argument, conf, is the configuration information. The key is
-	// the key of the map value returned by the method GetKeys(), and the value
-	// is pulled from the default group which has just been parsed.
+	// The third argument, conf, is all the parsed configuration information
+	// from the CLI parser, other parsers, or the default value.
+	// Notice: these configurations are from the DEFAULT group.
 	//
-	// For example, for the redis parser, its the method GetKeys() maybe
-	// returns {"connection": false}, then there may be a key-value pair,
-	// {"connection": "redis://1.2.3.4:6379/1"} in the argument conf of the
-	// method Parse, but there may be not. Ff so, the redis parser maybe use
-	/// the default value, "redis://127.0.0.1:6379/0". For the builtin ini
-	// parser, NewSimpleIniParser, it's "config-file" by default, but you can
-	// change it when a new ini parser is created.
+	// For example, for the redis parser, it can get the value of the
+	// configuration option, connection, for example, "redis://1.2.3.4:6379/1";
+	// and if no the option connection, it maybe use "redis://127.0.0.1:6379/0"
+	// as the default. If the option, connection, must exist, but it's not, the
+	// parser should returns an error.
 	//
 	// For the first result, a map, the key is the group name, and the value is
 	// the key-value pairs about the options defined in that group, which the
@@ -49,6 +38,8 @@ type Parser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
+	//
+	// Notice: the method should not cache any.
 	Parse(defaultGroupName string, opts map[string][]Opt,
 		conf map[string]interface{}) (results map[string]map[string]interface{},
 		err error)
@@ -59,14 +50,6 @@ type CliParser interface {
 	// Name returns the name of the CLI parser to identify a CLI parser.
 	Name() string
 
-	// The argument is the CLI arguments, but it may be nil.
-	//
-	// The key of the result map is the group name, and the value of that is
-	// the key-value pairs, which the key is the name of the registered option.
-	//
-	// If a certain option has no value, the CLI parser should not return a
-	// default one.
-
 	// Parse the value of the registered CLI options.
 	//
 	// The first argument, defaultGroupName, is the name of the default group.
@@ -76,7 +59,7 @@ type CliParser interface {
 	//
 	// The third argument, arguments, is the CLI arguments, which must be
 	// a string slice, not nil, but it maybe have no elements. The parser
-	// implementor should use os.Args[1:] when it's nil or empty, because
+	// implementor should not use os.Args[1:] when it's nil or empty, because
 	// it has been confirmed.
 	//
 	// For the first result, a map, the key is the group name, and the value
@@ -91,6 +74,8 @@ type CliParser interface {
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
+	//
+	// Notice: the method should not cache any.
 	Parse(defaultGroupName string, opts map[string][]Opt, arguments []string) (
 		results map[string]map[string]interface{}, args []string, err error)
 }
@@ -210,12 +195,6 @@ func (p iniParser) Name() string {
 	return "ini"
 }
 
-func (p iniParser) GetKeys() map[string]bool {
-	return map[string]bool{
-		p.optName: false,
-	}
-}
-
 func (p iniParser) Parse(_default string, opts map[string][]Opt,
 	conf map[string]interface{}) (results map[string]map[string]interface{},
 	err error) {
@@ -312,10 +291,6 @@ func NewEnvVarParser(prefix string) Parser {
 
 func (e envVarParser) Name() string {
 	return "env"
-}
-
-func (e envVarParser) GetKeys() map[string]bool {
-	return nil
 }
 
 func (e envVarParser) Parse(_default string, opts map[string][]Opt,
