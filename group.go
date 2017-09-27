@@ -100,6 +100,8 @@ func (g OptGroup) setOptions(options map[string]interface{}, notEmpty bool,
 			if err := g.setOptValue(name, v, notEmpty, debug); err != nil {
 				return err
 			}
+		} else if _, ok := g.values[name]; ok {
+			continue
 		} else if _default := opt.opt.Default(); _default != nil {
 			if err := g.setOptValue(name, _default, notEmpty, debug); err != nil {
 				return err

@@ -63,9 +63,13 @@ func ExampleConfig_RegisterStruct() {
 		Ignore  string  `name:"-"`
 	}
 
+	cli := NewDefaultFlagCliParser()
+	env := NewEnvVarParser("test")
+	conf := NewConfig(cli).AddParser(env)
+
 	s := S{}
-	Conf.RegisterStruct("", &s)
-	if err := Conf.Parse([]string{"-age", "18", "-group_address", "Beijing,Shanghai"}); err != nil {
+	conf.RegisterStruct("", &s)
+	if err := conf.Parse([]string{"-age", "18", "-group_address", "Beijing,Shanghai"}); err != nil {
 		fmt.Println(err)
 		return
 	}
