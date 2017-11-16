@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// DefaultGroupName is the name of the default group.
+const DefaultGroupName = "DEFAULT"
+
 type option struct {
 	opt   Opt
 	isCli bool

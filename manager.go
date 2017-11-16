@@ -117,7 +117,7 @@ type Config struct {
 // The name of the default group is DEFAULT.
 func NewConfig(cli CliParser) *Config {
 	return &Config{
-		defaultGroup: "DEFAULT",
+		defaultGroup: DefaultGroupName,
 
 		cli:     cli,
 		parsers: make([]Parser, 0, 2),
