@@ -16,6 +16,11 @@ import (
 // manager, it should get the instance of the config manager then register them
 // when creating the parser instance, because the config manager does not allow
 // anyone to register the option.
+//
+//    conf := NewConfig(cliParser)
+//    parser := NewXxxParser(conf) // Register the options into conf.
+//    conf.AddParser(parser)
+//    conf.Parse(nil)
 type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
