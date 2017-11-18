@@ -25,9 +25,6 @@ func ExampleConfig() {
 	Conf.RegisterCliOpts("cli", cliOpts2)
 	Conf.RegisterOpts("group", opts)
 
-	// We don't ask that all the options must have a value or the default value.
-	// Conf.IsRequired = false
-
 	args := []string{"-cli_no=0", "-required", "required"}
 	// args = nil // You can pass nil.
 	if err := Conf.Parse(args); err != nil {

@@ -22,93 +22,18 @@ var (
 	ErrNotParsed = fmt.Errorf("the config manager has not been parsed")
 )
 
-// Opt stands for an opt value.
-type Opt interface {
-	// Name returns the name of the option.
-	// It's necessary and must not be empty.
-	Name() string
-
-	// Short returns the short name of the option.
-	// It's optional. If having no short name, it should return "".
-	Short() string
-
-	// Help returns the help or usage information.
-	// If having no help doc, it should return "".
-	Help() string
-
-	// Default returns the default value.
-	// If having no default value, it should return nil.
-	Default() interface{}
-
-	// IsBool returns true if the option is bool type. Or return false.
-	IsBool() bool
-
-	// Parse parses the argument to the type of this option.
-	// If failed to parse, it should return an error to explain the reason.
-	Parse(interface{}) (interface{}, error)
-}
-
-// Validator is an interface to validate whether the value v is valid.
-//
-// When implementing an Opt, you can supply the method Validate to implement
-// the interface Validator, too. The config engine will check and call it.
-// So the Opt is the same to implement the interface:
-//
-//    type ValidatorOpt interface {
-//        Opt
-//        Validator
-//    }
-//
-// In order to be flexible and customized, the builtin validators use the
-// validator chain ValidatorChainOpt to handle more than one validator.
-// Notice: they both are the valid Opts with the validator function.
-type Validator interface {
-	// Validate whether the value v is valid.
-	//
-	// Return nil if the value is ok, or an error instead.
-	Validate(v interface{}) error
-}
-
-// ValidatorChainOpt is an Opt interface with more than one validator.
-//
-// The validators in the chain will be called in turn. The validation is
-// considered as failure only if one validator returns an error, that's,
-// only all the validators return nil, it's successful.
-type ValidatorChainOpt interface {
-	Opt
-
-	// Set the validator chain.
-	//
-	// Notice: this method should return the option itself.
-	SetValidators([]Validator) ValidatorChainOpt
-
-	// Return the validator chain.
-	GetValidators() []Validator
-}
-
 // Config is used to manage the configuration parsers.
 type Config struct {
-	// If true, it will check whether the option has no value or a zero value.
-	// If yes, it will return an error.
-	//
-	// Notice: the default value that is ZORE or empty is also regarded as
-	// having the value.
-	NotEmpty bool
+	isRequired bool
+	isDebug    bool
 
-	// If true, when registering the option, it will the verbose information.
-	// You should set it before registering the option.
-	Debug bool
+	defaultGroupName string
 
-	// Args is the rest of the CLI arguments, which are not the options
-	// starting with the prefix "-", "--" or others, etc.
-	Args []string
-
-	defaultGroup string
-
-	parsed  bool
 	cli     CliParser
 	parsers []Parser
 
+	args   []string
+	parsed bool
 	groups map[string]OptGroup
 }
 
@@ -117,7 +42,7 @@ type Config struct {
 // The name of the default group is DEFAULT.
 func NewConfig(cli CliParser) *Config {
 	return &Config{
-		defaultGroup: DefaultGroupName,
+		defaultGroupName: DefaultGroupName,
 
 		cli:     cli,
 		parsers: make([]Parser, 0, 2),
@@ -125,11 +50,73 @@ func NewConfig(cli CliParser) *Config {
 	}
 }
 
+// Parse parses the option, including CLI, the config file, or others.
+//
+// if the arguments is nil, it's equal to os.Args[1:].
+//
+// After parsing a certain option, it will call the validators of the option
+// to validate whether the option value is valid.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) Parse(args []string) (err error) {
+	c.checkIsParsed(true)
+	c.parsed = true
+
+	if args == nil {
+		args = os.Args[1:]
+	}
+
+	// Ensure that the default group exists.
+	if _, ok := c.groups[c.defaultGroupName]; !ok {
+		c.groups[c.defaultGroupName] = NewOptGroup(c.defaultGroupName, c)
+	}
+
+	var optErr error
+	setGroupOption := func(gname, name string, value interface{}) {
+		optErr = c.getGroupByName(gname).setOptValue(name, value)
+	}
+
+	// Parse the CLI arguments.
+	if err = c.cli.Parse(c, setGroupOption, c.setArgs, args); err != nil {
+		return fmt.Errorf("The CLI parser failed: %s", err)
+	}
+	if optErr != nil {
+		return fmt.Errorf("The CLI parser failed: %s", optErr)
+	}
+
+	// Parse the other options by other parsers.
+	for _, parser := range c.parsers {
+		if err = parser.Parse(c, setGroupOption); err != nil {
+			return fmt.Errorf("The %s parser failed: %s", parser.Name(), err)
+		}
+		if optErr != nil {
+			return fmt.Errorf("The %s parser failed: %s", parser.Name(), optErr)
+		}
+	}
+
+	// Check whether all the groups have parsed all the required options.
+	for _, group := range c.groups {
+		if err = group.checkRequiredOption(); err != nil {
+			return err
+		}
+	}
+
+	return
+}
+
+func (c *Config) setArgs(args []string) {
+	c.args = args
+}
+
 // Audit outputs the internal information to find out the troube.
+//
+// If not parsed, it will panic when calling it.
 func (c *Config) Audit() {
+	c.checkIsParsed(false)
+
 	fmt.Printf("%s:\n", filepath.Base(os.Args[0]))
-	fmt.Printf("    Args: %v\n", c.Args)
-	fmt.Printf("    DefaultGroup: %s\n", c.defaultGroup)
+	fmt.Printf("    Args: %v\n", c.args)
+	fmt.Printf("    DefaultGroup: %s\n", c.defaultGroupName)
 	fmt.Printf("    Cli Parser: %s\n", c.cli.Name())
 
 	// Parsers
@@ -163,73 +150,72 @@ func (c *Config) Audit() {
 	fmt.Println()
 }
 
-// Parse parses the option, including CLI, the config file, or others.
+func (c *Config) debug(format string, args ...interface{}) {
+	if c.isDebug {
+		fmt.Printf(format+"\n", args...)
+	}
+}
+
+// SetDebug sets the debug to true.
 //
-// if the arguments is nil, it's equal to os.Args[1:].
+// If setting, when registering the option, it'll output the verbose information.
+// You should set it before registering the option.
 //
-// After parsing a certain option, it will call the validators of the option
-// to validate whether the option value is valid.
-func (c *Config) Parse(arguments []string) (err error) {
-	if c.parsed {
-		return ErrParsed
-	}
-	c.parsed = true
+// If parsed, it will panic when calling it.
+func (c *Config) SetDebug() {
+	c.checkIsParsed(true)
+	c.isDebug = true
+}
 
-	if arguments == nil {
-		arguments = os.Args[1:]
-	}
+// IsDebug returns whether the config manager is on the debug mode.
+func (c *Config) IsDebug() bool {
+	return c.isDebug
+}
 
-	// Ensure that the default group exists.
-	if _, ok := c.groups[c.defaultGroup]; !ok {
-		c.groups[c.defaultGroup] = NewOptGroup(c.defaultGroup)
-	}
+// SetRequired asks that all the registered options have a value.
+//
+// Notice: the nil value is not considered that there is a value, but the ZERO
+// value is that.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetRequired() {
+	c.checkIsParsed(true)
+	c.isRequired = true
+}
 
-	// Parse the CLI arguments.
-	groupOpts := make(map[string][]Opt, len(c.groups))
-	for name, group := range c.groups {
-		groupOpts[name] = group.getAllOpts(true)
-	}
-	if groups, args, err := c.cli.Parse(c.defaultGroup, groupOpts,
-		arguments); err == nil {
-		for gname, opts := range groups {
-			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(opts, c.NotEmpty, c.Debug); err != nil {
-					return err
-				}
-			}
-		}
-		c.Args = args
-	} else {
-		return err
-	}
+// SetDefaultGroupName resets the name of the default group.
+//
+// If you want to modify it, you must do it before registering any options.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetDefaultGroupName(name string) {
+	c.checkIsParsed(true)
+	c.defaultGroupName = name
+}
 
-	// Parse the other options by other parsers.
-	for name, group := range c.groups {
-		groupOpts[name] = group.getAllOpts(false)
-	}
-	for _, parser := range c.parsers {
-		groups, err := parser.Parse(c.defaultGroup, groupOpts, c.Group("").values)
-		if err != nil {
-			return err
-		}
+// GetDefaultGroupName returns the name of the default group.
+func (c *Config) GetDefaultGroupName() string {
+	return c.defaultGroupName
+}
 
-		for gname, options := range groups {
-			if group, ok := c.groups[gname]; ok {
-				if err = group.setOptions(options, c.NotEmpty, c.Debug); err != nil {
-					return nil
-				}
-			}
-		}
-	}
+// Args returns the rest of the CLI arguments, which are not the options
+// starting with the prefix "-", "--" or others, etc.
+//
+// Notice: you should not modify the returned string slice result.
+//
+// If not parsed, it will panic when calling it.
+func (c *Config) Args() []string {
+	c.checkIsParsed(false)
+	return c.args
+}
 
-	// Check whether all the groups have parsed all the required options.
-	for _, group := range c.groups {
-		if err = group.checkRequiredOption(c.NotEmpty, c.Debug); err != nil {
-			return err
-		}
+func (c *Config) checkIsParsed(p bool) {
+	if p && c.parsed {
+		panic(ErrParsed)
 	}
-
-	return
+	if !p && !c.parsed {
+		panic(ErrNotParsed)
+	}
 }
 
 // Parsed returns true if has been parsed, or false.
@@ -245,10 +231,10 @@ func (c *Config) Parsed() bool {
 //
 // Notice: The parser having the same name has only been registered once. Or it
 // will panic..
+//
+// If parsed, it will panic when calling it.
 func (c *Config) AddParser(parser Parser) *Config {
-	if c.parsed {
-		panic(ErrParsed)
-	}
+	c.checkIsParsed(true)
 
 	name := parser.Name()
 	for _, p := range c.parsers {
@@ -267,6 +253,8 @@ func (c *Config) AddParser(parser Parser) *Config {
 // If the group name is "", it's regarded as the default group. And the struct
 // must be a pointer to a struct variable, or it will panic.
 //
+// If parsed, it will panic when calling it.
+//
 // The tag of the field supports "name", "short", "default", "help", which are
 // equal to the name, the short name, the default, the help of the option.
 // If you want to ignore a certain field, just set the tag "name" to "-",
@@ -284,11 +272,8 @@ func (c *Config) AddParser(parser Parser) *Config {
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 func (c *Config) RegisterStruct(group string, s interface{}) {
-	if c.parsed {
-		panic(ErrParsed)
-	}
-
-	c.getGroupByName(group).registerStruct(c, s, c.Debug)
+	c.checkIsParsed(true)
+	c.getGroupByName(group).registerStruct(s)
 }
 
 // RegisterCliOpt registers the option into the group.
@@ -297,6 +282,8 @@ func (c *Config) RegisterStruct(group string, s interface{}) {
 // parser.
 //
 // If the group name is "", it's regarded as the default group.
+//
+// If parsed, it will panic when calling it.
 func (c *Config) RegisterCliOpt(group string, opt Opt) {
 	c.registerOpt(group, true, opt)
 }
@@ -307,6 +294,8 @@ func (c *Config) RegisterCliOpt(group string, opt Opt) {
 // parser.
 //
 // If the group name is "", it's regarded as the default group.
+//
+// If parsed, it will panic when calling it.
 func (c *Config) RegisterCliOpts(group string, opts []Opt) {
 	for _, opt := range opts {
 		c.RegisterCliOpt(group, opt)
@@ -318,6 +307,8 @@ func (c *Config) RegisterCliOpts(group string, opts []Opt) {
 // It only registers the option to all the common parsers, not the CLI parser.
 //
 // If the group name is "", it's regarded as the default group.
+//
+// If parsed, it will panic when calling it.
 func (c *Config) RegisterOpt(group string, opt Opt) {
 	c.registerOpt(group, false, opt)
 }
@@ -327,20 +318,12 @@ func (c *Config) RegisterOpt(group string, opt Opt) {
 // It only registers the options to all the common parsers, not the CLI parser.
 //
 // If the group name is "", it's regarded as the default group.
+//
+// If parsed, it will panic when calling it.
 func (c *Config) RegisterOpts(group string, opts []Opt) {
 	for _, opt := range opts {
 		c.RegisterOpt(group, opt)
 	}
-}
-
-func (c *Config) getGroupByName(name string) OptGroup {
-	name = c.getGroupName(name)
-	g, ok := c.groups[name]
-	if !ok {
-		g = NewOptGroup(name)
-		c.groups[name] = g
-	}
-	return g
 }
 
 // registerOpt registers the option into the group.
@@ -349,19 +332,38 @@ func (c *Config) getGroupByName(name string) OptGroup {
 //
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
+//
+// If parsed, it will panic when calling it.
 func (c *Config) registerOpt(group string, cli bool, opt Opt) {
-	if c.parsed {
-		panic(ErrParsed)
-	}
+	c.checkIsParsed(true)
+	c.getGroupByName(group).registerOpt(cli, opt)
+}
 
-	c.getGroupByName(group).registerOpt(cli, opt, c.Debug)
+// Groups returns all the groups, the key of which is the group name.
+//
+// If not parsed, it will panic when calling it.
+//
+// Notice: you should not modify the returned map result.
+func (c *Config) Groups() map[string]OptGroup {
+	c.checkIsParsed(false)
+	return c.groups
 }
 
 func (c *Config) getGroupName(name string) string {
 	if name == "" {
-		return c.defaultGroup
+		return c.defaultGroupName
 	}
 	return name
+}
+
+func (c *Config) getGroupByName(name string) OptGroup {
+	name = c.getGroupName(name)
+	g, ok := c.groups[name]
+	if !ok {
+		g = NewOptGroup(name, c)
+		c.groups[name] = g
+	}
+	return g
 }
 
 // Group returns the OptGroup named group.
@@ -369,26 +371,15 @@ func (c *Config) getGroupName(name string) string {
 // Return the default group if the group name is "".
 //
 // The group must exist, or panic.
+//
+// If not parsed, it will panic when calling it.
 func (c *Config) Group(group string) OptGroup {
-	if !c.parsed {
-		panic(ErrNotParsed)
-	}
-
+	c.checkIsParsed(false)
 	group = c.getGroupName(group)
 	if g, ok := c.groups[group]; ok {
 		return g
 	}
 	panic(fmt.Errorf("have no group %s", group))
-}
-
-// SetDefaultGroup resets the name of the default group.
-//
-// If you want to modify it, you must do it before registering any options.
-func (c *Config) SetDefaultGroup(name string) {
-	if c.parsed {
-		panic(ErrParsed)
-	}
-	c.defaultGroup = name
 }
 
 // Value is equal to c.Group("").Value(name).

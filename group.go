@@ -16,6 +16,7 @@ type option struct {
 
 // OptGroup is the group of the option.
 type OptGroup struct {
+	c      *Config
 	name   string
 	opts   map[string]option
 	values map[string]interface{}
@@ -23,12 +24,13 @@ type OptGroup struct {
 }
 
 // NewOptGroup returns a new OptGroup.
-func NewOptGroup(name string) OptGroup {
+func NewOptGroup(name string, c *Config) OptGroup {
 	if name == "" {
 		panic(fmt.Errorf("the group is empty"))
 	}
 
 	return OptGroup{
+		c:      c,
 		name:   name,
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
@@ -36,40 +38,61 @@ func NewOptGroup(name string) OptGroup {
 	}
 }
 
-func (g OptGroup) getAllOpts(cli bool) []Opt {
-	opts := make([]Opt, 0, len(g.opts))
-	for _, opt := range g.opts {
-		if cli && !opt.isCli {
-			continue
-		}
-		opts = append(opts, opt.opt)
+// AllOpts returns all the registered options, including the CLI options.
+func (g OptGroup) AllOpts() map[string]Opt {
+	opts := make(map[string]Opt, len(g.opts))
+	for name, opt := range g.opts {
+		opts[name] = opt.opt
 	}
 	return opts
 }
 
-func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool,
-	debug bool) (err error) {
-	if notEmpty {
-		if value == nil {
-			return fmt.Errorf("the value of %s in the group %s is nil",
-				name, g.name)
-		} else if IsZero(value) {
-			return fmt.Errorf("the value of %s in the group %s is ZERO",
-				name, g.name)
+// Opts returns all the registered options, except the CLI options.
+func (g OptGroup) Opts() map[string]Opt {
+	opts := make(map[string]Opt, len(g.opts))
+	for name, opt := range g.opts {
+		if !opt.isCli {
+			opts[name] = opt.opt
 		}
 	}
+	return opts
+}
 
-	opt := g.opts[name].opt
+// CliOpts returns all the registered CLI options, except the non-CLI options.
+func (g OptGroup) CliOpts() map[string]Opt {
+	opts := make(map[string]Opt, len(g.opts))
+	for name, opt := range g.opts {
+		if opt.isCli {
+			opts[name] = opt.opt
+		}
+	}
+	return opts
+}
+
+func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
+	if value == nil {
+		return
+	}
+
+	opt, ok := g.opts[name]
+	if !ok {
+		return
+		// return fmt.Errorf("Not registered the option %s", name)
+	}
+
+	if value, err = opt.opt.Parse(value); err != nil {
+		return
+	}
 
 	// The option has a validator.
-	if v, ok := opt.(Validator); ok {
+	if v, ok := opt.opt.(Validator); ok {
 		if err = v.Validate(value); err != nil {
 			return
 		}
 	}
 
 	// The option has a validator chain.
-	if vc, ok := opt.(ValidatorChainOpt); ok {
+	if vc, ok := opt.opt.(ValidatorChainOpt); ok {
 		vs := vc.GetValidators()
 		if len(vs) > 0 {
 			for _, v := range vs {
@@ -84,48 +107,23 @@ func (g OptGroup) setOptValue(name string, value interface{}, notEmpty bool,
 	if field, ok := g.fields[name]; ok {
 		field.Set(reflect.ValueOf(value))
 	}
-	if debug {
-		fmt.Printf("Set the option [%s] in the group [%s] to [%v]\n",
-			name, g.name, value)
-	}
+
+	g.c.debug("Set the option[%s] in the group[%s] to [%v]", name, g.name, value)
 	return
 }
 
-func (g OptGroup) setOptions(options map[string]interface{}, notEmpty bool,
-	debug bool) error {
-	for name, opt := range g.opts {
-		if value, ok := options[name]; ok {
-			v, err := opt.opt.Parse(value)
-			if err != nil {
-				return fmt.Errorf("can't parse the option %s in group %s: %s",
-					name, g.name, err)
-			}
-			if err := g.setOptValue(name, v, notEmpty, debug); err != nil {
-				return err
-			}
-		} else if _, ok := g.values[name]; ok {
-			continue
-		} else if _default := opt.opt.Default(); _default != nil {
-			if err := g.setOptValue(name, _default, notEmpty, debug); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Check whether the required option has no value or a ZORE value.
-func (g OptGroup) checkRequiredOption(notEmpty bool, debug bool) (err error) {
+func (g OptGroup) checkRequiredOption() (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.Default(); v != nil {
-				if err = g.setOptValue(name, v, notEmpty, debug); err != nil {
+				if err = g.setOptValue(name, v); err != nil {
 					return
 				}
 				continue
 			}
 
-			if notEmpty {
+			if g.c.isRequired {
 				return fmt.Errorf("the option %s in the group %s has no value",
 					name, g.name)
 			}
@@ -134,7 +132,7 @@ func (g OptGroup) checkRequiredOption(notEmpty bool, debug bool) (err error) {
 	return nil
 }
 
-func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
+func (g OptGroup) registerStruct(s interface{}) {
 	sv := reflect.ValueOf(s)
 	if sv.IsNil() || !sv.IsValid() {
 		panic(fmt.Errorf("the struct is invalid or can't be set"))
@@ -148,12 +146,10 @@ func (g OptGroup) registerStruct(c *Config, s interface{}, debug bool) {
 		panic(fmt.Errorf("the struct is not a struct"))
 	}
 
-	g.registerStructByValue(c, sv, false, debug)
+	g.registerStructByValue(sv, false)
 }
 
-func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
-	debug bool) {
-
+func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 	if sv.Kind() == reflect.Ptr {
 		sv = sv.Elem()
 	}
@@ -183,21 +179,21 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
 		group := g
 		gname := g.name
 		if name, ok := field.Tag.Lookup("group"); ok {
-			gname = c.getGroupName(strings.TrimSpace(name))
-			group = c.getGroupByName(gname)
+			gname = g.c.getGroupName(strings.TrimSpace(name))
+			group = g.c.getGroupByName(gname)
 		}
 
-		cli := isCli
+		isCli := cli
 		if _cli := strings.TrimSpace(field.Tag.Get("cli")); _cli != "" {
 			switch _cli {
 			case "1", "t", "T", "true", "True", "TRUE":
-				cli = true
+				isCli = true
 			}
 		}
 
 		// Check whether the field is the struct.
 		if t := field.Type.Kind(); t == reflect.Struct {
-			group.registerStructByValue(c, fieldV, cli, debug)
+			group.registerStructByValue(fieldV, isCli)
 			continue
 		}
 
@@ -221,7 +217,7 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
 		}
 
 		opt := newBaseOpt(short, name, _default, help, _type)
-		group.registerOpt(cli, opt, debug)
+		group.registerOpt(isCli, opt)
 		group.fields[name] = fieldV
 	}
 }
@@ -230,27 +226,13 @@ func (g OptGroup) registerStructByValue(c *Config, sv reflect.Value, isCli bool,
 //
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
-func (g OptGroup) registerOpt(cli bool, opt Opt, debug bool) {
+func (g OptGroup) registerOpt(cli bool, opt Opt) {
 	if _, ok := g.opts[opt.Name()]; ok {
 		panic(fmt.Errorf("the option %s has been registered into the group %s",
 			opt.Name(), g.name))
 	}
 	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
-
-	if debug {
-		fmt.Printf("Register option: group=%s, name=%s, cli=%t\n",
-			g.name, opt.Name(), cli)
-	}
-}
-
-// registerOpts registers many options into the group once.
-//
-// The first argument, cli, indicates whether the option is as the CLI option,
-// too.
-func (g OptGroup) registerOpts(cli bool, opts []Opt, debug bool) {
-	for _, opt := range opts {
-		g.registerOpt(cli, opt, debug)
-	}
+	g.c.debug("Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 }
 
 // Value returns the value of the option.

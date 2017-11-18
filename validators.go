@@ -9,6 +9,44 @@ import (
 	"regexp"
 )
 
+// Validator is an interface to validate whether the value v is valid.
+//
+// When implementing an Opt, you can supply the method Validate to implement
+// the interface Validator, too. The config engine will check and call it.
+// So the Opt is the same to implement the interface:
+//
+//    type ValidatorOpt interface {
+//        Opt
+//        Validator
+//    }
+//
+// In order to be flexible and customized, the builtin validators use the
+// validator chain ValidatorChainOpt to handle more than one validator.
+// Notice: they both are the valid Opts with the validator function.
+type Validator interface {
+	// Validate whether the value v is valid.
+	//
+	// Return nil if the value is ok, or an error instead.
+	Validate(v interface{}) error
+}
+
+// ValidatorChainOpt is an Opt interface with more than one validator.
+//
+// The validators in the chain will be called in turn. The validation is
+// considered as failure only if one validator returns an error, that's,
+// only all the validators return nil, it's successful.
+type ValidatorChainOpt interface {
+	Opt
+
+	// Set the validator chain.
+	//
+	// Notice: this method should return the option itself.
+	SetValidators([]Validator) ValidatorChainOpt
+
+	// Return the validator chain.
+	GetValidators() []Validator
+}
+
 var (
 	errNil       = fmt.Errorf("the value is nil")
 	errStrEmtpy  = fmt.Errorf("the string is empty")

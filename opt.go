@@ -5,6 +5,32 @@ import (
 	"reflect"
 )
 
+// Opt stands for an opt value.
+type Opt interface {
+	// Name returns the name of the option.
+	// It's necessary and must not be empty.
+	Name() string
+
+	// Short returns the short name of the option.
+	// It's optional. If having no short name, it should return "".
+	Short() string
+
+	// Help returns the help or usage information.
+	// If having no help doc, it should return "".
+	Help() string
+
+	// Default returns the default value.
+	// If having no default value, it should return nil.
+	Default() interface{}
+
+	// IsBool returns true if the option is bool type. Or return false.
+	IsBool() bool
+
+	// Parse parses the argument to the type of this option.
+	// If failed to parse, it should return an error to explain the reason.
+	Parse(interface{}) (interface{}, error)
+}
+
 type optType int
 
 func (ot optType) String() string {

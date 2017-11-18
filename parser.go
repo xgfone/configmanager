@@ -11,38 +11,29 @@ import (
 )
 
 // Parser is an parser interface.
+//
+// If the parser implementation needs to register some options into the config
+// manager, it should get the instance of the config manager then register them
+// when creating the parser instance, because the config manager does not allow
+// anyone to register the option.
 type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
 
 	// Parse the value of the registered options.
 	//
-	// The first argument, defaultGroupName, is the name of the default group.
+	// The parser can get any information from the first argument.
 	//
-	// The second argument, opts, is the parsed option information. The key is
-	// the group name, and the value is the parsed option list.
+	// When the parser parsed out the option value, it should call the second
+	// argument, which is a function to set the group option. The function has
+	// three arguments, that's, the group name, the option name, and the option
+	// value. For the default group, the group name may be "" instead,
 	//
-	// The third argument, conf, is all the parsed configuration information
-	// from the CLI parser, other parsers, or the default value.
-	// Notice: these configurations are from the DEFAULT group.
-	//
-	// For example, for the redis parser, it can get the value of the
-	// configuration option, connection, for example, "redis://1.2.3.4:6379/1";
-	// and if no the option connection, it maybe use "redis://127.0.0.1:6379/0"
-	// as the default. If the option, connection, must exist, but it's not, the
-	// parser should returns an error.
-	//
-	// For the first result, a map, the key is the group name, and the value is
-	// the key-value pairs about the options defined in that group, which the
-	// option key is the name of the registered option.
+	// If there is any error, the parser should stop to parse and return it.
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	//
-	// Notice: the method should not cache any.
-	Parse(defaultGroupName string, opts map[string][]Opt,
-		conf map[string]interface{}) (results map[string]map[string]interface{},
-		err error)
+	Parse(c *Config, setOptionValue func(string, string, interface{})) error
 }
 
 // CliParser is an interface to parse the CLI arguments.
@@ -52,32 +43,28 @@ type CliParser interface {
 
 	// Parse the value of the registered CLI options.
 	//
-	// The first argument, defaultGroupName, is the name of the default group.
+	// The parser can get any information from the first argument.
 	//
-	// The second argument, opts, is the parsed option information. The key is
-	// the group name, and the value is the parsed option list.
+	// When the parser parsed out the option value, it should call the second
+	// argument, which is a function to set the group option. The function has
+	// three arguments, that's, the group name, the option name, and the option
+	// value. For the default group, the group name may be "" instead,
 	//
-	// The third argument, arguments, is the CLI arguments, which must be
-	// a string slice, not nil, but it maybe have no elements. The parser
-	// implementor should not use os.Args[1:] when it's nil or empty, because
-	// it has been confirmed.
+	// If there are the rest CLI arguments, that's those that does not start
+	// with the prefix "-", "--" or others, etc, the parser should call the
+	// second arguments, which is a function to set the rest arguments.
 	//
-	// For the first result, a map, the key is the group name, and the value
-	// is the key-value pairs about the options defined in that group, which
-	// the option key is the name of the registered option. NOTICE: the parser
-	// can parse the value of the option to a special type by calling the
-	// mehtod Parse() of the option, but it's not necessary. Whether the parser
-	// calls opt.Parse(value) or not, the configuration engine will call it.
+	// The last argument, arguments, is the CLI arguments to be parsed, which
+	// is a string slice, not nil, but it maybe have no elements. The parser
+	// implementor should not use os.Args[1:] when it's empty, because it has
+	// been confirmed.
 	//
-	// The second result is the rest of the CLI arguments, which are not the
-	// options starting with the prefix "-", "--" or others, etc.
+	// If there is any error, the parser should stop to parse and return it.
 	//
 	// If a certain option has no value, the parser should not return a default
 	// one instead.
-	//
-	// Notice: the method should not cache any.
-	Parse(defaultGroupName string, opts map[string][]Opt, arguments []string) (
-		results map[string]map[string]interface{}, args []string, err error)
+	Parse(c *Config, setOptionValue func(string, string, interface{}),
+		setArgs func([]string), arguments []string) error
 }
 
 type flagParser struct {
@@ -117,23 +104,23 @@ func (f flagParser) Name() string {
 	return "flag"
 }
 
-func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
-	results map[string]map[string]interface{}, args []string, err error) {
+func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
+	set2 func([]string), arguments []string) (err error) {
 	// Register the options into flag.FlagSet.
 	flagSet := f.flagSet
 	if flagSet == nil {
 		flagSet = flag.NewFlagSet(f.name, f.errhandler)
 	}
 
+	// Convert the option name.
 	name2group := make(map[string]string, 8)
 	name2opt := make(map[string]string, 8)
-	for group, _opts := range opts {
-		for _, opt := range _opts {
-			name := opt.Name()
-			if group != _default {
-				name = fmt.Sprintf("%s_%s", group, name)
+	for gname, group := range c.Groups() {
+		for name, opt := range group.CliOpts() {
+			if gname != c.GetDefaultGroupName() {
+				name = fmt.Sprintf("%s_%s", gname, name)
 			}
-			name2group[name] = group
+			name2group[name] = gname
 			name2opt[name] = opt.Name()
 
 			if opt.IsBool() {
@@ -153,22 +140,16 @@ func (f flagParser) Parse(_default string, opts map[string][]Opt, as []string) (
 	}
 
 	// Parse the CLI arguments.
-	if err = flagSet.Parse(as); err != nil {
+	if err = flagSet.Parse(arguments); err != nil {
 		return
 	}
 
 	// Acquire the result.
-	args = flagSet.Args()
-	results = make(map[string]map[string]interface{}, len(name2group))
+	set2(flagSet.Args())
 	flagSet.Visit(func(fg *flag.Flag) {
-		if group, ok := results[name2group[fg.Name]]; ok {
-			group[name2opt[fg.Name]] = fg.Value.String()
-		} else {
-			results[name2group[fg.Name]] = map[string]interface{}{
-				name2opt[fg.Name]: fg.Value.String(),
-			}
-		}
+		set1(name2group[fg.Name], name2opt[fg.Name], fg.Value.String())
 	})
+
 	return
 }
 
@@ -195,37 +176,36 @@ func (p iniParser) Name() string {
 	return "ini"
 }
 
-func (p iniParser) Parse(_default string, opts map[string][]Opt,
-	conf map[string]interface{}) (results map[string]map[string]interface{},
-	err error) {
+// func (p iniParser) Parse(_default string, opts map[string][]Opt,
+// 	conf map[string]interface{}) (results map[string]map[string]interface{},
+// 	err error) {
+func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error {
 	// Read the content of the config file.
-	filename, ok := conf[p.optName].(string)
-	if !ok || filename == "" {
-		return
+	filename := c.Group("").StringD(p.optName, "")
+	if filename == "" {
+		return nil
 	}
-
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return
+		return err
 	}
 
 	// Convert the format of the optons.
-	options := make(map[string]map[string]struct{}, len(opts))
-	for group, _opts := range opts {
-		g, ok := options[group]
+	options := make(map[string]map[string]struct{}, len(c.Groups()))
+	for gname, group := range c.Groups() {
+		opts := group.AllOpts()
+		g, ok := options[gname]
 		if !ok {
-			g = make(map[string]struct{}, len(_opts))
-			options[group] = g
+			g = make(map[string]struct{}, len(opts))
+			options[gname] = g
 		}
-		for _, opt := range _opts {
+		for _, opt := range opts {
 			g[opt.Name()] = struct{}{}
 		}
 	}
 
 	// Parse the config file.
-	group := make(map[string]interface{}, 8)
-	results = make(map[string]map[string]interface{}, len(options))
-	results[_default] = group
+	gname := c.GetDefaultGroupName()
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -243,33 +223,28 @@ func (p iniParser) Parse(_default string, opts map[string][]Opt,
 
 		// Start a new group
 		if line[0] == '[' && line[len(line)-1] == ']' {
-			gname := strings.TrimSpace(line[1 : len(line)-1])
+			gname = strings.TrimSpace(line[1 : len(line)-1])
 			if gname == "" {
-				return nil, fmt.Errorf("the group is empty")
-			}
-			if group = results[gname]; group == nil {
-				group = make(map[string]interface{}, 4)
-				results[gname] = group
+				return fmt.Errorf("the group is empty")
 			}
 			continue
 		}
 
 		n := strings.Index(line, p.sep)
 		if n == -1 {
-			err = fmt.Errorf("the line misses the separator %s", p.sep)
-			return
+			return fmt.Errorf("the line misses the separator %s", p.sep)
 		}
 
 		key := strings.TrimSpace(line[0:n])
 		for _, r := range key {
 			if !unicode.IsNumber(r) && !unicode.IsLetter(r) {
-				err = fmt.Errorf("the key is not an valid identifier")
-				return
+				return fmt.Errorf("the key is not an valid identifier")
 			}
 		}
-		group[key] = strings.TrimSpace(line[n+len(p.sep) : len(line)])
+		set(gname, key, strings.TrimSpace(line[n+len(p.sep):len(line)]))
 	}
-	return
+
+	return nil
 }
 
 type envVarParser struct {
@@ -293,9 +268,10 @@ func (e envVarParser) Name() string {
 	return "env"
 }
 
-func (e envVarParser) Parse(_default string, opts map[string][]Opt,
-	conf map[string]interface{}) (results map[string]map[string]interface{},
-	err error) {
+// func (e envVarParser) Parse(_default string, opts map[string][]Opt,
+// 	conf map[string]interface{}) (results map[string]map[string]interface{},
+// 	err error) {
+func (e envVarParser) Parse(c *Config, set func(string, string, interface{})) error {
 	// Initialize the prefix
 	prefix := e.prefix
 	if prefix != "" {
@@ -303,36 +279,28 @@ func (e envVarParser) Parse(_default string, opts map[string][]Opt,
 	}
 
 	// Convert the option to the variable name
-	env2opts := make(map[string][]string, len(opts)*8)
-	results = make(map[string]map[string]interface{}, len(opts))
-	for group, _opts := range opts {
-		var gname string
-		if group != _default {
-			gname = group + "_"
+	env2opts := make(map[string][]string, len(c.Groups())*8)
+	for gname, group := range c.Groups() {
+		_gname := ""
+		if gname != c.GetDefaultGroupName() {
+			_gname = gname + "_"
 		}
-		for _, opt := range _opts {
-			e := fmt.Sprintf("%s%s%s", prefix, gname, opt.Name())
-			env2opts[strings.ToUpper(e)] = []string{group, opt.Name()}
-		}
-
-		results[group] = make(map[string]interface{}, len(_opts))
-	}
-
-	// Convert the environment variable into a map.
-	envs := os.Environ()
-	infos := make(map[string]string, len(envs))
-	for _, env := range envs {
-		items := strings.SplitN(env, "=", 2)
-		if len(items) == 2 {
-			infos[items[0]] = items[1]
+		for name := range group.AllOpts() {
+			e := fmt.Sprintf("%s%s%s", prefix, _gname, name)
+			env2opts[strings.ToUpper(e)] = []string{gname, name}
 		}
 	}
 
 	// Get the option value from the environment variable.
-	for name, groupOpt := range env2opts {
-		if v, ok := infos[name]; ok {
-			results[groupOpt[0]][groupOpt[1]] = v
+	envs := os.Environ()
+	for _, env := range envs {
+		items := strings.SplitN(env, "=", 2)
+		if len(items) == 2 {
+			if info, ok := env2opts[items[0]]; ok {
+				set(info[0], info[1], items[1])
+			}
 		}
 	}
-	return
+
+	return nil
 }
