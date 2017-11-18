@@ -10,16 +10,18 @@ The biggest difference between `v2` to `v1` is to remove the method `GetKeys()` 
 ## Principle of Work
 
 1. Create a `Config` engine.
-2. Register the CLI or common options into `Config`.
+2. (Optional) Add the parsers into the `Config`.
+3. Register the CLI or common options into `Config`.
 3. Call the method `Parse()` to parse the options.
     1. Start to parse the configuration.
-    2. Get all the registered CLI options.
-    3. Call the CLI parser with the CLI optons and arguments to parse.
-    4. Get all the registered common options.
-    5. Call each other parsers according to the order that they are registered.
-        1. Call the method `Parse()` of the parser with the registered options and the parsed configurations, then get the parsed result.
-        2. Merge the parsed result together. Notice: before merging, it will call the validators of the option to validate the value of the option, if have.
-    6. Check whether some required options have neither the parsed value nor the default value.
+    2. Call the CLI parser with the CLI arguments to parse.
+    3. The CLI parser parses CLI options and sets values and the rest arguments.
+    4. Call each other parsers according to the order that they are registered.
+        1. Call the method `Parse()` of the parser.
+        2. The parser parses the options and sets values.
+    5. Check whether some required options have neither the parsed value nor the default value.
+
+**Notice:** when setting the parsed value, it will calling the validators to validate it if setting the validators for the option.
 
 
 ## Parser
