@@ -5,7 +5,7 @@ The inspiration is from [oslo.config](https://github.com/openstack/oslo.config),
 
 **NOTICE: The API has been stable.**
 
-The current version is `v3`, which has changed the interface of the configuration manager and the parser plugin. They should be better friendly.
+The current version is `v3`, which has changed the interface of the configuration manager and the parser plugin. They should be better friendly. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 The biggest difference between `v2` to `v1` is to remove the method `GetKeys()` from the parser interface `Parser`. But you can use the branch [v1](https://github.com/xgfone/go-config/tree/v1). For the user, there is no effect. So you have no need to modify any code, and just the parser plugin should be modified.
 
