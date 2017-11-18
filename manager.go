@@ -67,9 +67,7 @@ func (c *Config) Parse(args []string) (err error) {
 	}
 
 	// Ensure that the default group exists.
-	if _, ok := c.groups[c.defaultGroupName]; !ok {
-		c.groups[c.defaultGroupName] = NewOptGroup(c.defaultGroupName, c)
-	}
+	c.getGroupByName(c.defaultGroupName)
 
 	var optErr error
 	setGroupOption := func(gname, name string, value interface{}) {
