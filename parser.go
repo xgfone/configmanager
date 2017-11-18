@@ -53,7 +53,11 @@ type Parser interface {
 	// If there is any error, the parser should stop to parse and return it.
 	//
 	// If a certain option has no value, the parser should not return a default
-	// one instead.
+	// one instead. Also, the parser has no need to convert the value to the
+	// corresponding specific type, just string is ok. Because the configuration
+	// manager will convert the value to the specific type automatically.
+	// Certainly, it's not harmless for the parser to convert the value to
+	// the specific type.
 	Parse(c *Config, setOptionValue func(string, string, interface{})) error
 }
 
@@ -83,7 +87,11 @@ type CliParser interface {
 	// If there is any error, the parser should stop to parse and return it.
 	//
 	// If a certain option has no value, the parser should not return a default
-	// one instead.
+	// one instead. Also, the parser has no need to convert the value to the
+	// corresponding specific type, just string is ok. Because the configuration
+	// manager will convert the value to the specific type automatically.
+	// Certainly, it's not harmless for the parser to convert the value to
+	// the specific type.
 	Parse(c *Config, setOptionValue func(string, string, interface{}),
 		setArgs func([]string), arguments []string) error
 }
