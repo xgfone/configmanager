@@ -52,9 +52,9 @@ func ToBool(v interface{}) (bool, error) {
 	case string:
 		_v := v.(string)
 		switch _v {
-		case "t", "T", "1", "true", "True", "TRUE":
+		case "t", "T", "1", "on", "On", "ON", "true", "True", "TRUE":
 			return true, nil
-		case "f", "F", "0", "false", "False", "FALSE", "":
+		case "f", "F", "0", "off", "Off", "OFF", "false", "False", "FALSE", "":
 			return false, nil
 		default:
 			return false, fmt.Errorf("unrecognized bool string: %s", _v)
