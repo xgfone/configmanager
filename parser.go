@@ -239,8 +239,9 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 	// Parse the config file.
 	gname := c.GetDefaultGroupName()
 	lines := strings.Split(string(data), "\n")
-	for index, maxIndex := 0, len(lines); index < maxIndex; index++ {
+	for index, maxIndex := 0, len(lines); index < maxIndex; {
 		line := strings.TrimSpace(lines[index])
+		index++
 
 		// Ignore the empty line.
 		if len(line) == 0 {
@@ -274,27 +275,21 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 			}
 		}
 		value := strings.TrimSpace(line[n+len(p.sep) : len(line)])
-		if value == "" || value[len(value)-1] != '\\' {
-			set(gname, key, value)
-			continue
-		}
 
 		// The continuation line
-		values := []string{strings.TrimSpace(strings.TrimRight(value, "\\"))}
-		index++
-		for index < maxIndex {
-			value = strings.TrimSpace(lines[index])
-			if value == "" || value[len(value)-1] != '\\' {
-				// index--
-				value = strings.TrimSpace(strings.TrimRight(value, "\\"))
-				values = append(values, value)
-				break
+		if value != "" && value[len(value)-1] == '\\' {
+			vs := []string{strings.TrimSpace(strings.TrimRight(value, "\\"))}
+			for index < maxIndex {
+				value = strings.TrimSpace(lines[index])
+				vs = append(vs, strings.TrimSpace(strings.TrimRight(value, "\\")))
+				index++
+				if value == "" || value[len(value)-1] != '\\' {
+					break
+				}
 			}
-			value = strings.TrimSpace(strings.TrimRight(value, "\\"))
-			values = append(values, value)
-			index++
+			value = strings.TrimSpace(strings.Join(vs, "\n"))
 		}
-		set(gname, key, strings.Join(values, "\n"))
+		set(gname, key, value)
 	}
 
 	return nil
