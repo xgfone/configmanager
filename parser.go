@@ -192,8 +192,11 @@ type iniParser struct {
 // The argument is the option name which the parser needs. It should be
 // registered, and parsed before this parser runs.
 //
-// The ini parser supports the line comments starting with "#" or "//".
-// The key and the value is separated by an equal sign, that's =.
+// The ini parser supports the line comments starting with "#", "//" or ";".
+// The key and the value is separated by an equal sign, that's =
+//
+// If the value ends with "\", it will continue the next line. The lines will
+// be joined by "\n" together.
 //
 // Notice: the options that have not been assigned to a certain group will be
 // divided into the default group.
@@ -236,8 +239,8 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 	// Parse the config file.
 	gname := c.GetDefaultGroupName()
 	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
+	for index, maxIndex := 0, len(lines); index < maxIndex; index++ {
+		line := strings.TrimSpace(lines[index])
 
 		// Ignore the empty line.
 		if len(line) == 0 {
@@ -245,7 +248,7 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 		}
 
 		// Ignore the line comments starting with "#" or "//".
-		if (line[0] == '#') ||
+		if (line[0] == '#') || (line[0] == ';') ||
 			(len(line) > 1 && line[0] == '/' && line[1] == '/') {
 			continue
 		}
@@ -270,7 +273,28 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 				return fmt.Errorf("the key is not an valid identifier")
 			}
 		}
-		set(gname, key, strings.TrimSpace(line[n+len(p.sep):len(line)]))
+		value := strings.TrimSpace(line[n+len(p.sep) : len(line)])
+		if value == "" || value[len(value)-1] != '\\' {
+			set(gname, key, value)
+			continue
+		}
+
+		// The continuation line
+		values := []string{strings.TrimSpace(strings.TrimRight(value, "\\"))}
+		index++
+		for index < maxIndex {
+			value = strings.TrimSpace(lines[index])
+			if value == "" || value[len(value)-1] != '\\' {
+				// index--
+				value = strings.TrimSpace(strings.TrimRight(value, "\\"))
+				values = append(values, value)
+				break
+			}
+			value = strings.TrimSpace(strings.TrimRight(value, "\\"))
+			values = append(values, value)
+			index++
+		}
+		set(gname, key, strings.Join(values, "\n"))
 	}
 
 	return nil
