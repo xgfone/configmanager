@@ -176,9 +176,14 @@ func (o baseOpt) SetValidators(vs []Validator) ValidatorChainOpt {
 
 // AddValidators adds some new validators into the validator chain.
 func (o baseOpt) AddValidators(vs ...Validator) ValidatorChainOpt {
-	for _, v := range vs {
-		o.validators = append(o.validators, v)
+	if len(o.validators) == 0 {
+		o.validators = vs
+	} else {
+		for _, v := range vs {
+			o.validators = append(o.validators, v)
+		}
 	}
+
 	return o
 }
 
