@@ -284,6 +284,9 @@ func (c *Config) AddParser(parser Parser) *Config {
 //
 // Notice: The struct supports the nested struct, but not the pointer field.
 //
+// Notice: The struct doesn't support the validator. You maybe choose others,
+// such as github.com/asaskevich/govalidator.
+//
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	c.checkIsParsed(true)
