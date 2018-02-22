@@ -86,12 +86,9 @@ import (
     config "github.com/xgfone/go-config"
 )
 
-var ipValidators = []Validator{NewIPValidator()}
-var portValidators = []Validator{NewPortValidator()}
-
 var opts = []config.Opt{
-    config.Str("ip", "", "the ip address").SetValidators(ipValidators),
-    config.Int("port", 80, "the port").SetValidators(portValidators),
+    config.Str("ip", "", "the ip address").AddValidators(NewIPValidator()),
+    config.Int("port", 80, "the port").AddValidators(NewPortValidator()),
 }
 
 func main() {
