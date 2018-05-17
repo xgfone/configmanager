@@ -43,6 +43,9 @@ type Config struct {
 	isRequired bool
 	isDebug    bool
 
+	versionName string
+	versionNum  string
+
 	defaultGroupName string
 
 	cli     CliParser
@@ -64,6 +67,18 @@ func NewConfig(cli CliParser) *Config {
 		parsers: make([]Parser, 0, 2),
 		groups:  make(map[string]OptGroup, 2),
 	}
+}
+
+// AddVersion adds the CLI version option.
+//
+// When parsing CLI arguments, if giving the option, print the version and exit.
+func (c *Config) AddVersion(name, version string) {
+	if name == "" || version == "" {
+		panic(fmt.Errorf("name or version must not be empty"))
+	}
+	c.RegisterCliOpt("", Bool(name, false, "Print the version and exit."))
+	c.versionName = name
+	c.versionNum = version
 }
 
 // Parse parses the option, including CLI, the config file, or others.
@@ -96,6 +111,12 @@ func (c *Config) Parse(args []string) (err error) {
 	}
 	if optErr != nil {
 		return fmt.Errorf("The CLI parser failed: %s", optErr)
+	}
+
+	// Check the version option.
+	if c.versionName != "" && c.BoolD(c.versionName, false) {
+		fmt.Println(c.versionNum)
+		os.Exit(0)
 	}
 
 	// Parse the other options by other parsers.
