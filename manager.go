@@ -43,8 +43,9 @@ type Config struct {
 	isRequired bool
 	isDebug    bool
 
-	versionName string
-	versionNum  string
+	vName    string
+	vVersion string
+	vHelp    string
 
 	defaultGroupName string
 
@@ -69,29 +70,16 @@ func NewConfig(cli CliParser) *Config {
 	}
 }
 
-// AddVersion adds the CLI version option.
+// SetVersion set the version information.
 //
-// When parsing CLI arguments, if giving the option, print the version and exit.
-func (c *Config) AddVersion(name, version string, help ...string) {
-	if name == "" || version == "" {
-		panic(fmt.Errorf("name or version must not be empty"))
-	}
-	doc := "Print the version and exit."
-	if len(help) > 0 {
-		doc = help[0]
-	}
-	c.RegisterCliOpt("", Bool(name, false, doc))
-	c.versionName = name
-	c.versionNum = version
-}
-
-// AddVersion2 is the same as AddVersion.
+// If the CLI parser support the version function, it will print the version
+// and exit when giving the CLI option version.
 //
 // It supports:
-//     AddVersion2(version)             // AddVersion2("1.0.0")
-//     AddVersion2(version, name)       // AddVersion2("1.0.0", "version")
-//     AddVersion2(version, name, help) // AddVersion2("1.0.0", "version", "Print the version")
-func (c *Config) AddVersion2(version string, args ...string) {
+//     SetVersion(version)             // SetVersion("1.0.0")
+//     SetVersion(version, name)       // SetVersion("1.0.0", "version")
+//     SetVersion(version, name, help) // SetVersion("1.0.0", "version", "Print the version")
+func (c *Config) SetVersion(version string, args ...string) {
 	name := "version"
 	help := "Print the version and exit."
 	if len(args) == 1 {
@@ -100,7 +88,19 @@ func (c *Config) AddVersion2(version string, args ...string) {
 		name = args[0]
 		help = args[1]
 	}
-	c.AddVersion(name, version, help)
+
+	if name == "" || version == "" || help == "" {
+		panic(fmt.Errorf("The arguments about version must not be empty"))
+	}
+
+	c.vName = name
+	c.vVersion = version
+	c.vHelp = help
+}
+
+// GetVersion returns the information about version.
+func (c *Config) GetVersion() (name, version, help string) {
+	return c.vName, c.vVersion, c.vHelp
 }
 
 // Parse parses the option, including CLI, the config file, or others.
@@ -133,12 +133,6 @@ func (c *Config) Parse(args []string) (err error) {
 	}
 	if optErr != nil {
 		return fmt.Errorf("The CLI parser failed: %s", optErr)
-	}
-
-	// Check the version option.
-	if c.versionName != "" && c.BoolD(c.versionName, false) {
-		fmt.Println(c.versionNum)
-		os.Exit(0)
 	}
 
 	// Parse the other options by other parsers.

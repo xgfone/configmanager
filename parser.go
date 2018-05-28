@@ -168,15 +168,26 @@ func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
 		}
 	}
 
+	// Register the version option.
+	name, version, help := c.GetVersion()
+	_version := flagSet.Bool(name, false, help)
+
 	// Parse the CLI arguments.
 	if err = flagSet.Parse(arguments); err != nil {
 		return
 	}
 
+	if *_version {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	// Acquire the result.
 	set2(flagSet.Args())
 	flagSet.Visit(func(fg *flag.Flag) {
-		set1(name2group[fg.Name], name2opt[fg.Name], fg.Value.String())
+		if fg.Name != name {
+			set1(name2group[fg.Name], name2opt[fg.Name], fg.Value.String())
+		}
 	})
 
 	return

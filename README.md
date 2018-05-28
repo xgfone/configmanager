@@ -52,7 +52,7 @@ func main() {
     conf.RegisterCliOpt("", config.IntOpt("", "port", 80, "the port"))
     conf.RegisterCliOpt("", config.StrOpt("", "config-file", "", "The path of the ini config file."))
     conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0", "the redis connection url"))
-    conf.AddAddVersion2("1.0.0") // Print the version and exit when giving the CLI option version.
+    conf.SetAddVersion("1.0.0") // Print the version and exit when giving the CLI option version.
 
     if err := conf.Parse(nil); err != nil {
         conf.Audit() // View the internal information.
