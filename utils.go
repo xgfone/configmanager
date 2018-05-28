@@ -45,8 +45,8 @@ func bool2Int(b bool) int64 {
 
 // ToBool does the best to convert a certain value to bool
 //
-// For "t", "T", "1", "true", "True", "TRUE", it's true.
-// For "f", "F", "0", "false", "False", "FALSE", it's false.
+// For "t", "T", "1", "on", "On", "ON", "true", "True", "TRUE", it's true.
+// For "f", "F", "0", "off", "Off", "OFF", "false", "False", "FALSE", it's false.
 func ToBool(v interface{}) (bool, error) {
 	switch v.(type) {
 	case string:
