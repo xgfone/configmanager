@@ -70,7 +70,7 @@ func NewConfig(cli CliParser) *Config {
 	}
 }
 
-// SetVersion set the version information.
+// SetVersion sets the version information.
 //
 // If the CLI parser support the version function, it will print the version
 // and exit when giving the CLI option version.
@@ -103,6 +103,17 @@ func (c *Config) GetVersion() (name, version, help string) {
 	return c.vName, c.vVersion, c.vHelp
 }
 
+// ResetCLIParser resets the CLI parser.
+//
+// It must be called before calling c.Parse().
+func (c *Config) ResetCLIParser(cli CliParser) {
+	c.checkIsParsed(true)
+	if cli == nil {
+		panic(fmt.Errorf("The CLI parser must not be nil"))
+	}
+	c.cli = cli
+}
+
 // Parse parses the option, including CLI, the config file, or others.
 //
 // if the arguments is nil, it's equal to os.Args[1:].
@@ -114,6 +125,10 @@ func (c *Config) GetVersion() (name, version, help string) {
 func (c *Config) Parse(args []string) (err error) {
 	c.checkIsParsed(true)
 	c.parsed = true
+
+	if c.cli == nil {
+		panic(fmt.Errorf("The CLI parser is nil"))
+	}
 
 	if args == nil {
 		args = os.Args[1:]
