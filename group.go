@@ -102,7 +102,7 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 
 	// The option has a validator.
 	if v, ok := opt.opt.(Validator); ok {
-		if err = v.Validate(name, value); err != nil {
+		if err = v.Validate(g.name, name, value); err != nil {
 			return
 		}
 	}
@@ -112,7 +112,7 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 		vs := vc.GetValidators()
 		if len(vs) > 0 {
 			for _, v := range vs {
-				if err = v.Validate(name, value); err != nil {
+				if err = v.Validate(g.name, name, value); err != nil {
 					return
 				}
 			}
