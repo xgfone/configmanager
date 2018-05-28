@@ -40,10 +40,10 @@ import (
 // validator chain ValidatorChainOpt to handle more than one validator.
 // Notice: they both are the valid Opts with the validator function.
 type Validator interface {
-	// Validate whether the value v is valid.
+	// Validate whether the value v is valid, whose name is 'name'.
 	//
 	// Return nil if the value is ok, or an error instead.
-	Validate(v interface{}) error
+	Validate(name string, v interface{}) error
 }
 
 // ValidatorChainOpt is an Opt interface with more than one validator.
@@ -73,6 +73,27 @@ var (
 	errIntType   = fmt.Errorf("the value is not an integer type")
 	errFloatType = fmt.Errorf("the value is not an float type")
 )
+
+// ValidatorError stands for a validator error.
+type ValidatorError struct {
+	Name string
+	Err  error
+}
+
+// NewValidatorError returns a new ValidatorError.
+func NewValidatorError(name string, err error) ValidatorError {
+	return ValidatorError{Name: name, Err: err}
+}
+
+// NewValidatorErrorf returns a new ValidatorError.
+func NewValidatorErrorf(name, format string, args ...interface{}) ValidatorError {
+	return ValidatorError{Name: name, Err: fmt.Errorf(format, args...)}
+}
+
+// Error implements the interface Error.
+func (v ValidatorError) Error() string {
+	return fmt.Sprintf("%s: %s", v.Name, v.Err)
+}
 
 func toString(v interface{}) (string, error) {
 	if v == nil {
@@ -113,25 +134,26 @@ func toFloat64(v interface{}) (float64, error) {
 }
 
 // ValidatorFunc is a wrapper of a function validator.
-type ValidatorFunc func(v interface{}) error
+type ValidatorFunc func(name string, v interface{}) error
 
 // Validate implements the method Validate of the interface Validator.
-func (f ValidatorFunc) Validate(v interface{}) error {
-	return f(v)
+func (f ValidatorFunc) Validate(name string, v interface{}) error {
+	return f(name, v)
 }
 
 // NewStrLenValidator returns a validator to validate that the length of the
 // string must be between min and max.
 func NewStrLenValidator(min, max int) Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 
 		_len := len(s)
 		if _len > max || _len < min {
-			return fmt.Errorf("the length of %s is %d, not between %d and %d",
+			return NewValidatorErrorf(name,
+				"the length of %s is %d, not between %d and %d",
 				s, _len, min, max)
 		}
 		return nil
@@ -141,14 +163,14 @@ func NewStrLenValidator(min, max int) Validator {
 // NewStrNotEmptyValidator returns a validator to validate that the value must
 // not be an empty string.
 func NewStrNotEmptyValidator() Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 
 		if len(s) == 0 {
-			return errStrEmtpy
+			return NewValidatorError(name, errStrEmtpy)
 		}
 		return nil
 	})
@@ -157,17 +179,17 @@ func NewStrNotEmptyValidator() Validator {
 // NewStrArrayValidator returns a validator to validate that the value is in
 // the array.
 func NewStrArrayValidator(array []string) Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 		for _, v := range array {
 			if s == v {
 				return nil
 			}
 		}
-		return fmt.Errorf("the value %s is not in %v", s, array)
+		return NewValidatorErrorf(name, "the value %s is not in %v", s, array)
 	})
 }
 
@@ -176,16 +198,17 @@ func NewStrArrayValidator(array []string) Validator {
 //
 // This validator uses regexp.MatchString(pattern, s) to validate it.
 func NewRegexpValidator(pattern string) Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 
 		if ok, err := regexp.MatchString(pattern, s); err != nil {
-			return err
+			return NewValidatorError(name, err)
 		} else if !ok {
-			return fmt.Errorf("'%s' doesn't match the value '%s'", s, pattern)
+			return NewValidatorErrorf(name, "'%s' doesn't match the value '%s'",
+				s, pattern)
 		}
 		return nil
 	})
@@ -193,25 +216,27 @@ func NewRegexpValidator(pattern string) Validator {
 
 // NewURLValidator returns a validator to validate whether a url is valid.
 func NewURLValidator() Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
-		_, err = url.Parse(s)
-		return err
+		if _, err = url.Parse(s); err != nil {
+			return NewValidatorError(name, err)
+		}
+		return nil
 	})
 }
 
 // NewIPValidator returns a validator to validate whether an ip is valid.
 func NewIPValidator() Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 		if net.ParseIP(s) == nil {
-			return fmt.Errorf("the value is not a valid ip")
+			return NewValidatorErrorf(name, "the value is not a valid ip")
 		}
 		return nil
 	})
@@ -223,14 +248,14 @@ func NewIPValidator() Validator {
 // This validator can be used to validate the value of the type int, int8,
 // int16, int32, int64, uint, uint8, uint16, uint32, uint64.
 func NewIntegerRangeValidator(min, max int64) Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		i, err := toInt64(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 		if min > i || i > max {
-			return fmt.Errorf("the value %d is not between %d and %d",
-				i, min, max)
+			return NewValidatorErrorf(name,
+				"the value %d is not between %d and %d", i, min, max)
 		}
 		return nil
 	})
@@ -242,14 +267,14 @@ func NewIntegerRangeValidator(min, max int64) Validator {
 // This validator can be used to validate the value of the type float32 and
 // float64.
 func NewFloatRangeValidator(min, max float64) Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		f, err := toFloat64(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
 		if min > f || f > max {
-			return fmt.Errorf("the value %f is not between %f and %f",
-				f, min, max)
+			return NewValidatorErrorf(name,
+				"the value %f is not between %f and %f", f, min, max)
 		}
 		return nil
 	})
@@ -263,13 +288,15 @@ func NewPortValidator() Validator {
 
 // NewEmailValidator returns a validator to validate whether an email is valid.
 func NewEmailValidator() Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
-		_, err = mail.ParseAddress(s)
-		return err
+		if _, err = mail.ParseAddress(s); err != nil {
+			return NewValidatorError(name, err)
+		}
+		return nil
 	})
 }
 
@@ -278,12 +305,14 @@ func NewEmailValidator() Validator {
 //
 // This validator uses net.SplitHostPort() to validate it.
 func NewAddressValidator() Validator {
-	return ValidatorFunc(func(v interface{}) error {
+	return ValidatorFunc(func(name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return err
+			return NewValidatorError(name, err)
 		}
-		_, _, err = net.SplitHostPort(s)
-		return err
+		if _, _, err = net.SplitHostPort(s); err != nil {
+			return NewValidatorError(name, err)
+		}
+		return nil
 	})
 }
