@@ -72,13 +72,35 @@ func NewConfig(cli CliParser) *Config {
 // AddVersion adds the CLI version option.
 //
 // When parsing CLI arguments, if giving the option, print the version and exit.
-func (c *Config) AddVersion(name, version string) {
+func (c *Config) AddVersion(name, version string, help ...string) {
 	if name == "" || version == "" {
 		panic(fmt.Errorf("name or version must not be empty"))
 	}
-	c.RegisterCliOpt("", Bool(name, false, "Print the version and exit."))
+	doc := "Print the version and exit."
+	if len(help) > 0 {
+		doc = help[0]
+	}
+	c.RegisterCliOpt("", Bool(name, false, doc))
 	c.versionName = name
 	c.versionNum = version
+}
+
+// AddVersion2 is the same as AddVersion.
+//
+// It supports:
+//     AddVersion2(version)             // AddVersion2("1.0.0")
+//     AddVersion2(version, name)       // AddVersion2("1.0.0", "version")
+//     AddVersion2(version, name, help) // AddVersion2("1.0.0", "version", "Print the version")
+func (c *Config) AddVersion2(version string, args ...string) {
+	name := "version"
+	help := "Print the version and exit."
+	if len(args) == 1 {
+		name = args[0]
+	} else if len(args) > 1 {
+		name = args[0]
+		help = args[1]
+	}
+	c.AddVersion(name, version, help)
 }
 
 // Parse parses the option, including CLI, the config file, or others.
