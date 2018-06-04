@@ -204,7 +204,8 @@ type iniParser struct {
 // registered, and parsed before this parser runs.
 //
 // The ini parser supports the line comments starting with "#", "//" or ";".
-// The key and the value is separated by an equal sign, that's =
+// The key and the value is separated by an equal sign, that's =. The key must
+// be in one of _, -, number and letter.
 //
 // If the value ends with "\", it will continue the next line. The lines will
 // be joined by "\n" together.
@@ -281,8 +282,8 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 
 		key := strings.TrimSpace(line[0:n])
 		for _, r := range key {
-			if !unicode.IsNumber(r) && !unicode.IsLetter(r) {
-				return fmt.Errorf("the key is not an valid identifier")
+			if r != '_' && r != '-' && !unicode.IsNumber(r) && !unicode.IsLetter(r) {
+				return fmt.Errorf("valid identifier key '%s'", key)
 			}
 		}
 		value := strings.TrimSpace(line[n+len(p.sep) : len(line)])
