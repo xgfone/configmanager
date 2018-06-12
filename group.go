@@ -258,6 +258,11 @@ func (g OptGroup) Value(name string) interface{} {
 	return g.values[name]
 }
 
+// V is the short for g.Value(name).
+func (g OptGroup) V(name string) interface{} {
+	return g.Value(name)
+}
+
 func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	opt := g.Value(name)
 	if opt == nil {

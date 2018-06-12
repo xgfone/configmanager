@@ -451,9 +451,19 @@ func (c *Config) Group(group string) OptGroup {
 	panic(fmt.Errorf("have no group %s", group))
 }
 
+// G is the short for c.Group(group).
+func (c *Config) G(group string) OptGroup {
+	return c.Group(group)
+}
+
 // Value is equal to c.Group("").Value(name).
 func (c *Config) Value(name string) interface{} {
 	return c.Group("").Value(name)
+}
+
+// V is the short for c.Value(name).
+func (c *Config) V(name string) interface{} {
+	return c.Value(name)
 }
 
 // BoolE is equal to c.Group("").BoolE(name).
