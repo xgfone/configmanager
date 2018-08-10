@@ -222,20 +222,17 @@ func (c *Config) debug(format string, args ...interface{}) {
 	}
 }
 
-// SetDebug sets the debug to true.
+// SetDebug sets the debug and return the old.
 //
 // If setting, when registering the option, it'll output the verbose information.
 // You should set it before registering the option.
 //
 // If parsed, it will panic when calling it.
-func (c *Config) SetDebug() {
+func (c *Config) SetDebug(debug bool) (old bool) {
 	c.checkIsParsed(true)
-	c.isDebug = true
-}
-
-// IsDebug returns whether the config manager is on the debug mode.
-func (c *Config) IsDebug() bool {
-	return c.isDebug
+	old = c.isDebug
+	c.isDebug = debug
+	return
 }
 
 // SetRequired asks that all the registered options have a value.
