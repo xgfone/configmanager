@@ -122,7 +122,7 @@ func (c *Config) ResetCLIParser(cli CliParser) {
 // to validate whether the option value is valid.
 //
 // If parsed, it will panic when calling it.
-func (c *Config) Parse(args []string) (err error) {
+func (c *Config) Parse(args ...string) (err error) {
 	c.checkIsParsed(true)
 	c.parsed = true
 

@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"flag"
 	"fmt"
 	"os"
 )
@@ -40,10 +41,7 @@ func ExampleConfig() {
 	Conf.RegisterCliOpts("", cliOpts1)
 	Conf.RegisterCliOpts("cli", cliOpts2)
 	Conf.RegisterOpts("group", opts)
-
-	args := []string{"-cli_no=0", "-required", "required"}
-	// args = nil // You can pass nil.
-	if err := Conf.Parse(args); err != nil {
+	if err := Conf.Parse("-cli_no=0", "-required", "required"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -76,13 +74,13 @@ func ExampleConfig_RegisterStruct() {
 		Ignore  string  `name:"-"`
 	}
 
-	cli := NewDefaultFlagCliParser()
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
 	env := NewEnvVarParser("test")
 	conf := NewConfig(cli).AddParser(env)
 
 	s := S{}
 	conf.RegisterStruct("", &s)
-	if err := conf.Parse([]string{"-age", "18", "-group_address", "Beijing,Shanghai"}); err != nil {
+	if err := conf.Parse("-age", "18", "-group_address", "Beijing,Shanghai"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -102,7 +100,7 @@ func ExampleNewEnvVarParser() {
 	os.Setenv("TEST_VAR1", "abc")
 	os.Setenv("TEST_GROUP_VAR2", "123")
 
-	cli := NewDefaultFlagCliParser()
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
 	env := NewEnvVarParser("test")
 	conf := NewConfig(cli).AddParser(env)
 
@@ -110,7 +108,7 @@ func ExampleNewEnvVarParser() {
 	opt2 := Int("var2", 0, "the environment var 2")
 	conf.RegisterOpt("", opt1)
 	conf.RegisterOpt("group", opt2)
-	if err := conf.Parse(nil); err != nil {
+	if err := conf.Parse(); err != nil {
 		fmt.Println(err)
 		return
 	}
