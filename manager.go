@@ -50,7 +50,7 @@ type Config struct {
 	defaultGroupName string
 
 	cli     CliParser
-	parsers []Parser
+	parsers map[string]Parser
 
 	args   []string
 	parsed bool
@@ -65,7 +65,7 @@ func NewConfig(cli CliParser) *Config {
 		defaultGroupName: DefaultGroupName,
 
 		cli:     cli,
-		parsers: make([]Parser, 0, 2),
+		parsers: make(map[string]Parser, 2),
 		groups:  make(map[string]OptGroup, 2),
 	}
 }
@@ -151,12 +151,12 @@ func (c *Config) Parse(args ...string) (err error) {
 	}
 
 	// Parse the other options by other parsers.
-	for _, parser := range c.parsers {
+	for name, parser := range c.parsers {
 		if err = parser.Parse(c, setGroupOption); err != nil {
-			return fmt.Errorf("The %s parser failed: %s", parser.Name(), err)
+			return fmt.Errorf("The %s parser failed: %s", name, err)
 		}
 		if optErr != nil {
-			return fmt.Errorf("The %s parser failed: %s", parser.Name(), optErr)
+			return fmt.Errorf("The %s parser failed: %s", name, optErr)
 		}
 	}
 
@@ -187,8 +187,8 @@ func (c *Config) Audit() {
 
 	// Parsers
 	fmt.Printf("    Parsers:")
-	for _, parser := range c.parsers {
-		fmt.Printf(" %s", parser.Name())
+	for name := range c.parsers {
+		fmt.Printf(" %s", name)
 	}
 	fmt.Printf("\n")
 
@@ -300,13 +300,10 @@ func (c *Config) AddParser(parser Parser) *Config {
 	c.checkIsParsed(true)
 
 	name := parser.Name()
-	for _, p := range c.parsers {
-		if p.Name() == name {
-			panic(fmt.Errorf("the parser %s has been added", name))
-		}
+	if _, ok := c.parsers[name]; ok {
+		panic(fmt.Errorf("the parser %s has been added", name))
 	}
-
-	c.parsers = append(c.parsers, parser)
+	c.parsers[name] = parser
 	return c
 }
 
