@@ -307,6 +307,21 @@ func (c *Config) AddParser(parser Parser) *Config {
 	return c
 }
 
+// RemoveParser removes and returns the parser named name.
+//
+// Return nil if the parser does not exist.
+func (c *Config) RemoveParser(name string) Parser {
+	p := c.parsers[name]
+	delete(c.parsers, name)
+	return p
+}
+
+// HasParser reports whether the parser named name exists or not.
+func (c *Config) HasParser(name string) bool {
+	_, ok := c.parsers[name]
+	return ok
+}
+
 // RegisterStruct registers the field name of the struct as options into the
 // group "group".
 //
