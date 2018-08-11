@@ -100,8 +100,7 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 
 	opt, ok := g.opts[name]
 	if !ok {
-		return
-		// return fmt.Errorf("Not registered the option %s", name)
+		return fmt.Errorf("Not the option '%s' in the group '%s'", name, g.name)
 	}
 
 	if value, err = opt.opt.Parse(value); err != nil {
