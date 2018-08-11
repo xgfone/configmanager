@@ -120,3 +120,22 @@ func ExampleNewEnvVarParser() {
 	// var1=abc
 	// var2=123
 }
+
+func ExampleConfig_Watch() {
+	opt := Str("watchval", "abc", "test watch value")
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
+	conf := NewConfig(cli)
+	conf.RegisterCliOpt("test", opt)
+
+	conf.Watch(func(gname, name string, value interface{}) {
+		fmt.Printf("group=%s, name=%s, value=%v\n", gname, name, value)
+	})
+
+	if err := conf.Parse(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Output:
+	// group=test, name=watchval, value=abc
+}

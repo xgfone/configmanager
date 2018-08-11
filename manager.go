@@ -55,6 +55,7 @@ type Config struct {
 	args   []string
 	parsed bool
 	groups map[string]OptGroup
+	watch  func(string, string, interface{})
 }
 
 // NewConfig returns a new Config.
@@ -112,6 +113,14 @@ func (c *Config) ResetCLIParser(cli CliParser) {
 		panic(fmt.Errorf("The CLI parser must not be nil"))
 	}
 	c.cli = cli
+}
+
+// Watch watches the change of values.
+//
+// When the option value is changed, the function f will be called.
+func (c *Config) Watch(f func(groupName string, optName string, optValue interface{})) {
+	c.checkIsParsed(true)
+	c.watch = f
 }
 
 // Parse parses the option, including CLI, the config file, or others.

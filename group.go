@@ -125,6 +125,9 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 	}
 
 	g.c.debug("Set the option[%s] in the group[%s] to [%v]", name, g.name, value)
+	if g.c.watch != nil {
+		g.c.watch(g.name, name, value)
+	}
 	return
 }
 
