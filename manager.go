@@ -123,6 +123,15 @@ func (c *Config) Watch(f func(groupName string, optName string, optValue interfa
 	c.watch = f
 }
 
+// SetOptValue sets the value of the option in the group.
+func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
+	group, ok := c.groups[groupName]
+	if !ok {
+		return fmt.Errorf("no group '%s'", groupName)
+	}
+	return group.setOptValue(optName, optValue)
+}
+
 // Parse parses the option, including CLI, the config file, or others.
 //
 // if the arguments is nil, it's equal to os.Args[1:].

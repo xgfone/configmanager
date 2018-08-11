@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // DefaultGroupName is the name of the default group.
@@ -32,7 +33,9 @@ type option struct {
 
 // OptGroup is the group of the option.
 type OptGroup struct {
-	c      *Config
+	c    *Config
+	lock *sync.RWMutex
+
 	name   string
 	opts   map[string]option
 	values map[string]interface{}
@@ -45,9 +48,14 @@ func NewOptGroup(name string, c *Config) OptGroup {
 		panic(fmt.Errorf("the group is empty"))
 	}
 
+	if c == nil {
+		panic(fmt.Errorf("Config is nil"))
+	}
+
 	return OptGroup{
 		c:      c,
 		name:   name,
+		lock:   new(sync.RWMutex),
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
 		fields: make(map[string]reflect.Value),
@@ -119,10 +127,12 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 		}
 	}
 
+	g.lock.Lock()
 	g.values[name] = value
 	if field, ok := g.fields[name]; ok {
 		field.Set(reflect.ValueOf(value))
 	}
+	g.lock.Unlock()
 
 	g.c.debug("Set the option[%s] in the group[%s] to [%v]", name, g.name, value)
 	if g.c.watch != nil {
@@ -257,8 +267,11 @@ func (g OptGroup) registerOpt(cli bool, opt Opt) {
 // Value returns the value of the option.
 //
 // Return nil if the option does not exist.
-func (g OptGroup) Value(name string) interface{} {
-	return g.values[name]
+func (g OptGroup) Value(name string) (v interface{}) {
+	g.lock.RLock()
+	v = g.values[name]
+	g.lock.RUnlock()
+	return v
 }
 
 // V is the short for g.Value(name).
