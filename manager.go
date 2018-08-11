@@ -445,7 +445,11 @@ func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 // Notice: you should not modify the returned map result.
 func (c *Config) Groups() map[string]OptGroup {
 	c.checkIsParsed(false)
-	return c.groups
+	m := make(map[string]OptGroup, len(c.groups))
+	for gname, group := range c.groups {
+		m[gname] = group
+	}
+	return m
 }
 
 func (c *Config) getGroupName(name string) string {
