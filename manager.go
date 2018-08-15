@@ -332,6 +332,7 @@ func (c *Config) AddParser(parser Parser) *Config {
 //
 // Return nil if the parser does not exist.
 func (c *Config) RemoveParser(name string) Parser {
+	c.checkIsParsed(true)
 	p := c.parsers[name]
 	delete(c.parsers, name)
 	return p
