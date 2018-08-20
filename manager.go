@@ -118,12 +118,15 @@ func (c *Config) ResetCLIParser(cli CliParser) {
 // Watch watches the change of values.
 //
 // When the option value is changed, the function f will be called.
+//
+// If SetOptValue() is used in the multi-thread, you should promise
+// that the callback function f is thread-safe and reenterable.
 func (c *Config) Watch(f func(groupName string, optName string, optValue interface{})) {
 	c.checkIsParsed(true)
 	c.watch = f
 }
 
-// SetOptValue sets the value of the option in the group.
+// SetOptValue sets the value of the option in the group. It's thread-safe.
 func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
 	group, ok := c.groups[groupName]
 	if !ok {
