@@ -359,11 +359,13 @@ func (c *Config) HasParser(name string) bool {
 // equal to the name, the short name, the default, the help of the option.
 // If you want to ignore a certain field, just set the tag "name" to "-",
 // such as `name:"-"`. The field also contains the tag "cli", whose value maybe
-// "1", "t", "T", "true", "True", "TRUE", and which represents the option is
-// also registered into the CLI parser. Moreover, you can use the tag "group"
-// to reset the group name, that's, the group of the field with the tag "group"
-// is different to the group of the whole struct. If the value of the tag
-// "group" is empty, the default group will be used in preference.
+// "1", "t", "T", "on", "On", "ON", "true", "True", "TRUE", and which represents
+// the option is also registered into the CLI parser; but you can also use "0",
+// "f", "F", "off", "Off", "OFF", "false", "False" or "FALSE" to override or
+// disable it. Moreover, you can use the tag "group" to reset the group name,
+// that's, the group of the field with the tag "group" is different to the group
+// of the whole struct. If the value of the tag "group" is empty, the default
+// group will be used in preference.
 //
 // Notice: If having no the tag "name", the name of the option is the lower-case
 // of the field name.

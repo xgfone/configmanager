@@ -214,8 +214,12 @@ func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		isCli := cli
 		if _cli := strings.TrimSpace(field.Tag.Get("cli")); _cli != "" {
 			switch _cli {
-			case "1", "t", "T", "true", "True", "TRUE":
+			case "1", "t", "T", "on", "On", "ON", "true", "True", "TRUE":
 				isCli = true
+			case "0", "f", "F", "off", "Off", "OFF", "false", "False", "FALSE":
+				isCli = false
+			default:
+				panic(fmt.Errorf("no support '%s' for cli", field.Tag.Get("cli")))
 			}
 		}
 
