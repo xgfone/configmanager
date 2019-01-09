@@ -126,12 +126,15 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 		}
 	}
 
-	g.lock.Lock()
-	g.values[name] = value
-	if field, ok := g.fields[name]; ok {
-		field.Set(reflect.ValueOf(value))
-	}
-	g.lock.Unlock()
+	func() {
+		g.lock.Lock()
+		defer g.lock.Unlock()
+
+		g.values[name] = value
+		if field, ok := g.fields[name]; ok {
+			field.Set(reflect.ValueOf(value))
+		}
+	}()
 
 	g.c.debug("Set the option[%s] in the group[%s] to [%v]", name, g.name, value)
 	if g.c.watch != nil {
