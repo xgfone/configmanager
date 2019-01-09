@@ -221,6 +221,10 @@ func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 
 		// Check whether the field is the struct.
 		if t := field.Type.Kind(); t == reflect.Struct {
+			if gname == g.name {
+				gname = name
+				group = g.c.getGroupByName(gname)
+			}
 			group.registerStructByValue(fieldV, isCli)
 			continue
 		}

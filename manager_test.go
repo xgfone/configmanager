@@ -67,11 +67,19 @@ func ExampleConfig_RegisterStruct() {
 		Address []string
 	}
 
+	type Sub struct {
+		Parent string
+	}
+
 	type S struct {
 		Name    string  `name:"name" cli:"1" default:"Aaron"`
 		Age     int8    `cli:"t" default:"123"`
 		Address Address `group:"group" cli:"true"`
 		Ignore  string  `name:"-"`
+
+		Sub1 Sub `group:"sub1" cli:"true"`
+		Sub2 Sub `cli:"true"`
+		Sub3 Sub `cli:"true"`
 	}
 
 	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
@@ -80,7 +88,7 @@ func ExampleConfig_RegisterStruct() {
 
 	s := S{}
 	conf.RegisterStruct("", &s)
-	if err := conf.Parse("-age", "18", "-group_address", "Beijing,Shanghai"); err != nil {
+	if err := conf.Parse("-age", "18", "-group_address", "Beijing,Shanghai", "-sub1_parent", "abc", "-sub2_parent", "xyz"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -88,11 +96,17 @@ func ExampleConfig_RegisterStruct() {
 	fmt.Printf("Name: %s\n", s.Name)
 	fmt.Printf("Age: %d\n", s.Age)
 	fmt.Printf("Address: %s\n", s.Address.Address)
+	fmt.Printf("Parent1: %s\n", s.Sub1.Parent)
+	fmt.Printf("Parent2: %s\n", s.Sub2.Parent)
+	fmt.Printf("Parent3: %s\n", s.Sub3.Parent)
 
 	// Output:
 	// Name: Aaron
 	// Age: 18
 	// Address: [Beijing Shanghai]
+	// Parent1: abc
+	// Parent2: xyz
+	// Parent3:
 }
 
 func ExampleNewEnvVarParser() {
