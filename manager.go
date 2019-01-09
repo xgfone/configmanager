@@ -127,6 +127,9 @@ func (c *Config) Watch(f func(groupName string, optName string, optValue interfa
 }
 
 // SetOptValue sets the value of the option in the group. It's thread-safe.
+//
+// Notice: You cannot call SetOptValue() for the struct option, because we have
+// no way to promise that it's thread-safe.
 func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
 	group, ok := c.groups[groupName]
 	if !ok {
@@ -376,6 +379,8 @@ func (c *Config) HasParser(name string) bool {
 // such as github.com/asaskevich/govalidator.
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
+//
+// Notice: For the struct option, you cannot call SetOptValue().
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	c.checkIsParsed(true)
 	c.getGroupByName(group).registerStruct(s)
