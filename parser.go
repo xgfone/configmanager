@@ -185,8 +185,10 @@ func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
 	// Acquire the result.
 	set2(flagSet.Args())
 	flagSet.Visit(func(fg *flag.Flag) {
-		if fg.Name != name {
-			set1(name2group[fg.Name], name2opt[fg.Name], fg.Value.String())
+		gname := name2group[fg.Name]
+		optname := name2opt[fg.Name]
+		if gname != "" && optname != "" && fg.Name != name {
+			set1(gname, optname, fg.Value.String())
 		}
 	})
 

@@ -122,7 +122,7 @@ func ExampleNewEnvVarParser() {
 	opt2 := Int("var2", 0, "the environment var 2")
 	conf.RegisterOpt("", opt1)
 	conf.RegisterOpt("group", opt2)
-	if err := conf.Parse(); err != nil {
+	if err := conf.Parse([]string{}...); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -145,7 +145,7 @@ func ExampleConfig_Watch() {
 		fmt.Printf("group=%s, name=%s, value=%v\n", gname, name, value)
 	})
 
-	if err := conf.Parse(); err != nil {
+	if err := conf.Parse([]string{}...); err != nil {
 		fmt.Println(err)
 		return
 	}

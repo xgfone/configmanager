@@ -162,7 +162,7 @@ func NewStrLenValidator(min, max int) Validator {
 		_len := len(s)
 		if _len > max || _len < min {
 			return NewValidatorErrorf(group, name,
-				"the length of %s is %d, not between %d and %d",
+				"the length of '%s' is %d, not between %d and %d",
 				s, _len, min, max)
 		}
 		return nil
