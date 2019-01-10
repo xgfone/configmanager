@@ -3,29 +3,28 @@ An extensible go configuration. The default parsers can parse the CLI arguments 
 
 The inspiration is from [oslo.config](https://github.com/openstack/oslo.config), which is a `OpenStack` library for config.
 
-The current version is `v7`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
+The current version is `v8`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 
 ## Principle of Work
 
 1. Create a `Config` engine.
-2. (Optional) Add the parsers into the `Config`.
-3. Register the CLI or common options into `Config`.
+2. (Optional) Add the CLI and non-CLI parsers into the `Config`.
+3. Register the common options into `Config`.
 3. Call the method `Parse()` to parse the options.
     1. Start to parse the configuration.
-    2. Call the CLI parser with the CLI arguments to parse.
-    3. The CLI parser parses CLI options and sets values and the rest arguments.
-    4. Call each other parsers according to the order that they are registered.
+    2. Call the CLI parser if exists, and the CLI parser parses the CLI arguments.
+    3. Call each other parsers according to the order that they are registered.
         1. Call the method `Parse()` of the parser.
         2. The parser parses the options and sets values.
-    5. Check whether some required options have neither the parsed value nor the default value.
+    4. Check whether some required options have neither the parsed value nor the default value.
 
 **Notice:** when setting the parsed value, it will calling the validators to validate it if setting the validators for the option.
 
 
 ## Parser
 
-In order to deveplop a new CLI parser, you just need to implement the interface `CliParser`. In one `Config`, there is only one CLI parser. But it can have more than one other parsers, and you just need to implement the interface `Parser`, then add it into `Config` by the method `AddParser()`. See the example above. See [DOC](https://godoc.org/github.com/xgfone/go-config).
+In order to deveplop a new parser, you just need to implement the interface `Parser`. But `Config` distinguishes the CLI parser and the common parser, which have the same interface `Parser`. But `Config` must have no more than one CLI parser set by `ResetCLIParser()` and maybe have many common parsers added by `AddParser()`. See the example above.
 
 
 ## Usage
@@ -41,7 +40,7 @@ import (
 )
 
 func main() {
-    cliParser := config.NewFlagCliParser("", flag.ExitOnError)
+    cliParser := config.NewDefaultFlagCliParser(true)
     iniParser := config.NewSimpleIniParser("config-file")
     conf := config.NewConfig(cliParser).AddParser(iniParser)
 
@@ -53,7 +52,7 @@ func main() {
     conf.RegisterCliOpt("redis", config.StrOpt("", "conn", "redis://127.0.0.1:6379/0", "the redis connection url"))
     conf.SetAddVersion("1.0.0") // Print the version and exit when giving the CLI option version.
 
-    if err := conf.Parse(nil); err != nil {
+    if err := conf.Parse(); err != nil {
         conf.Audit() // View the internal information.
         fmt.Println(err)
         return
@@ -74,7 +73,7 @@ func main() {
 }
 ```
 
-You can also create a new `Config` by the `NewDefault()`, which will use `NewFlagCliParser()` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`, which you change it by modifying the value of the variable `IniParserOptName`. Notice: `NewDefault()` does not add the environment variable parser, and you need to add it by hand, such as `NewDefault().AddParser(NewEnvVarParser(""))`.
+You can also create a new `Config` by the `NewDefault()`, which will use `NewDefaultFlagCliParser(true)` as the CLI parser, add the ini parser `NewSimpleIniParser()` and register the CLI option `config-file`, which you change it by modifying the value of the variable `IniParserOptName`. Notice: `NewDefault()` does not add the environment variable parser, and you need to add it by hand, such as `NewDefault().AddParser(NewEnvVarParser(""))`.
 
 The package has created a global default `Config` created by `NewDefault()` like doing above, which is `Conf`. You can use it, like the global variable `CONF` in `oslo.config`. For example,
 ```go
@@ -93,7 +92,7 @@ var opts = []config.Opt{
 
 func main() {
     config.Conf.RegisterCliOpts("", opts)
-    config.Conf.Parse([]string{"-ip", "0.0.0.0"}) // You can pass nil
+    config.Conf.Parse("-ip", "0.0.0.0") // You can pass nil
 
     fmt.Println(config.Conf.String("ip")) // Output: 0.0.0.0
     fmt.Println(config.Conf.Int("port"))  // Output: 80
@@ -102,28 +101,59 @@ func main() {
 
 You also register a struct then use it.
 ```go
+package main
+
+import (
+    "fmt"
+    config "github.com/xgfone/go-config"
+)
+
 func main() {
-    type S struct {
-        Name    string `name:"name" cli:"1" default:"Aaron" help:"The user name"`
-        Age     int8   `cli:"t" default:"123"`
-        Address string `cli:"true"`
-        Ignore  string `name:"-"`
+    type Address struct {
+		Address []string `default:""`
     }
 
+    type S struct {
+        Name    string  `name:"name" cli:"1" default:"Aaron" help:"The user name"`
+        Age     int8    `cli:"t" default:"123"`
+        Addr1   Address `group:"group" cli:"true"`
+        Addr2   Address `cli:"true"`
+        Addr3   Address
+        Ignore  string  `name:"-"`
+    }
+
+    args := []string{"--age", "18", "--group-address", "abc,def", "--addr2-address", "xyz"}
+
     s := S{}
-    Conf.RegisterStruct("", &s)
-    if err := Conf.Parse([]string{"-age", "18", "-address", "China"}); err != nil {
+    config.Conf.RegisterStruct("", &s)
+    if err := config.Conf.Parse(args...); err != nil {
         fmt.Println(err)
         return
     }
 
     fmt.Printf("Name: %s\n", s.Name)
     fmt.Printf("Age: %d\n", s.Age)
-    fmt.Printf("Address: %s\n", s.Address)
+    fmt.Printf("Address: %v\n", s.Addr1.Address)
+    fmt.Printf("Address: %v\n", s.Addr2.Address)
+    fmt.Printf("Address: %v\n", s.Addr3.Address)
+    // Output:
+    // Name: Aaron
+    // Age: 18
+    // Address: [abc def]
+    // Address: [xyz]
+    // Address: []
 
     // Or
-    fmt.Printf("Name: %s\n", Conf.String("name"))
-    fmt.Printf("Age: %d\n", Conf.Int8("age"))
-    fmt.Printf("Address: %s\n", Conf.String("Address"))
+    fmt.Printf("Name: %s\n", config.Conf.String("name"))
+    fmt.Printf("Age: %d\n", config.Conf.Int8("age"))
+    fmt.Printf("Address: %v\n", config.Conf.Group("group").Strings("address"))
+    fmt.Printf("Address: %v\n", config.Conf.Group("addr2").Strings("address"))
+    fmt.Printf("Address: %v\n", config.Conf.Group("addr3").Strings("address"))
+    // Output:
+    // Name: Aaron
+    // Age: 18
+    // Address: [abc def]
+    // Address: [xyz]
+    // Address: []
 }
 ```
