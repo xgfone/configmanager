@@ -433,8 +433,18 @@ func (c *Config) HasParser(name string) bool {
 //
 // Notice: For the struct option, you cannot call SetOptValue().
 func (c *Config) RegisterStruct(group string, s interface{}) {
+	c.registerStruct(group, s, false)
+}
+
+// RegisterCliStruct is the same as RegisterStruct, but it will register
+// the option into the CLI parser by default.
+func (c *Config) RegisterCliStruct(group string, s interface{}) {
+	c.registerStruct(group, s, true)
+}
+
+func (c *Config) registerStruct(group string, s interface{}, cli bool) {
 	c.checkIsParsed(true)
-	c.getGroupByName(group, true).registerStruct(s)
+	c.getGroupByName(group, true).registerStruct(s, cli)
 	if v, ok := s.(StructValidator); ok {
 		c.validators = append(c.validators, v.Validate)
 	}

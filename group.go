@@ -172,7 +172,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 	return nil
 }
 
-func (g *OptGroup) registerStruct(s interface{}) {
+func (g *OptGroup) registerStruct(s interface{}, cli bool) {
 	sv := reflect.ValueOf(s)
 	if sv.IsNil() || !sv.IsValid() {
 		panic(fmt.Errorf("the struct is invalid or can't be set"))
@@ -186,7 +186,7 @@ func (g *OptGroup) registerStruct(s interface{}) {
 		panic(fmt.Errorf("the struct is not a struct"))
 	}
 
-	g.registerStructByValue(sv, false)
+	g.registerStructByValue(sv, cli)
 }
 
 func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
