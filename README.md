@@ -44,8 +44,7 @@ func main() {
     iniParser := config.NewSimpleIniParser("config-file")
     conf := config.NewConfig(cliParser).AddParser(iniParser)
 
-    validators := []Validator{NewIPValidator()}
-    ipOpt := config.StrOpt("", "ip", "", "the ip address").SetValidators(validators)
+    ipOpt := config.StrOpt("", "ip", "", "the ip address").SetValidators(NewIPValidator())
     conf.RegisterCliOpt("", ipOpt)
     conf.RegisterCliOpt("", config.IntOpt("", "port", 80, "the port"))
     conf.RegisterCliOpt("", config.StrOpt("", "config-file", "", "The path of the ini config file."))
