@@ -54,7 +54,7 @@ type Config struct {
 
 	args   []string
 	parsed bool
-	groups map[string]OptGroup
+	groups map[string]*OptGroup
 	watch  func(string, string, interface{})
 }
 
@@ -67,7 +67,7 @@ func NewConfig(cli CliParser) *Config {
 
 		cli:     cli,
 		parsers: make(map[string]Parser, 2),
-		groups:  make(map[string]OptGroup, 2),
+		groups:  make(map[string]*OptGroup, 2),
 	}
 }
 
@@ -131,11 +131,10 @@ func (c *Config) Watch(f func(groupName string, optName string, optValue interfa
 // Notice: You cannot call SetOptValue() for the struct option, because we have
 // no way to promise that it's thread-safe.
 func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
-	group, ok := c.groups[groupName]
-	if !ok {
-		return fmt.Errorf("no group '%s'", groupName)
+	if group := c.getGroupByName(groupName, false); group != nil {
+		return group.setOptValue(optName, optValue)
 	}
-	return group.setOptValue(optName, optValue)
+	return fmt.Errorf("no group '%s'", groupName)
 }
 
 // Parse parses the option, including CLI, the config file, or others.
@@ -159,11 +158,12 @@ func (c *Config) Parse(args ...string) (err error) {
 	}
 
 	// Ensure that the default group exists.
-	c.getGroupByName(c.defaultGroupName)
+	c.getGroupByName(c.defaultGroupName, true)
 
 	var optErr error
 	setGroupOption := func(gname, name string, value interface{}) {
-		optErr = c.getGroupByName(gname).setOptValue(name, value)
+		// optErr = c.getGroupByName(gname, true).setOptValue(name, value)
+		optErr = c.SetOptValue(gname, name, value)
 	}
 
 	// Parse the CLI arguments.
@@ -383,7 +383,7 @@ func (c *Config) HasParser(name string) bool {
 // Notice: For the struct option, you cannot call SetOptValue().
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	c.checkIsParsed(true)
-	c.getGroupByName(group).registerStruct(s)
+	c.getGroupByName(group, true).registerStruct(s)
 }
 
 // RegisterCliOpt registers the option into the group.
@@ -446,7 +446,7 @@ func (c *Config) RegisterOpts(group string, opts []Opt) {
 // If parsed, it will panic when calling it.
 func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 	c.checkIsParsed(true)
-	c.getGroupByName(group).registerOpt(cli, opt)
+	c.getGroupByName(group, true).registerOpt(cli, opt)
 }
 
 // Groups returns all the groups, the key of which is the group name.
@@ -454,9 +454,9 @@ func (c *Config) registerOpt(group string, cli bool, opt Opt) {
 // If not parsed, it will panic when calling it.
 //
 // Notice: you should not modify the returned map result.
-func (c *Config) Groups() map[string]OptGroup {
+func (c *Config) Groups() map[string]*OptGroup {
 	c.checkIsParsed(false)
-	m := make(map[string]OptGroup, len(c.groups))
+	m := make(map[string]*OptGroup, len(c.groups))
 	for gname, group := range c.groups {
 		m[gname] = group
 	}
@@ -470,10 +470,10 @@ func (c *Config) getGroupName(name string) string {
 	return name
 }
 
-func (c *Config) getGroupByName(name string) OptGroup {
+func (c *Config) getGroupByName(name string, new bool) *OptGroup {
 	name = c.getGroupName(name)
 	g, ok := c.groups[name]
-	if !ok {
+	if !ok && new {
 		g = NewOptGroup(name, c)
 		c.groups[name] = g
 	}
@@ -487,7 +487,7 @@ func (c *Config) getGroupByName(name string) OptGroup {
 // The group must exist, or panic.
 //
 // If not parsed, it will panic when calling it.
-func (c *Config) Group(group string) OptGroup {
+func (c *Config) Group(group string) *OptGroup {
 	c.checkIsParsed(false)
 	group = c.getGroupName(group)
 	if g, ok := c.groups[group]; ok {
@@ -497,7 +497,7 @@ func (c *Config) Group(group string) OptGroup {
 }
 
 // G is the short for c.Group(group).
-func (c *Config) G(group string) OptGroup {
+func (c *Config) G(group string) *OptGroup {
 	return c.Group(group)
 }
 

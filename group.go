@@ -34,7 +34,7 @@ type option struct {
 // OptGroup is the group of the option.
 type OptGroup struct {
 	c    *Config
-	lock *sync.RWMutex
+	lock sync.RWMutex
 
 	name   string
 	opts   map[string]option
@@ -43,7 +43,7 @@ type OptGroup struct {
 }
 
 // NewOptGroup returns a new OptGroup.
-func NewOptGroup(name string, c *Config) OptGroup {
+func NewOptGroup(name string, c *Config) *OptGroup {
 	if name == "" {
 		panic(fmt.Errorf("the group is empty"))
 	}
@@ -52,10 +52,10 @@ func NewOptGroup(name string, c *Config) OptGroup {
 		panic(fmt.Errorf("Config is nil"))
 	}
 
-	return OptGroup{
+	return &OptGroup{
 		c:      c,
 		name:   name,
-		lock:   new(sync.RWMutex),
+		lock:   sync.RWMutex{},
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
 		fields: make(map[string]reflect.Value),
@@ -63,7 +63,7 @@ func NewOptGroup(name string, c *Config) OptGroup {
 }
 
 // AllOpts returns all the registered options, including the CLI options.
-func (g OptGroup) AllOpts() map[string]Opt {
+func (g *OptGroup) AllOpts() map[string]Opt {
 	opts := make(map[string]Opt, len(g.opts))
 	for name, opt := range g.opts {
 		opts[name] = opt.opt
@@ -72,7 +72,7 @@ func (g OptGroup) AllOpts() map[string]Opt {
 }
 
 // Opts returns all the registered options, except the CLI options.
-func (g OptGroup) Opts() map[string]Opt {
+func (g *OptGroup) Opts() map[string]Opt {
 	opts := make(map[string]Opt, len(g.opts))
 	for name, opt := range g.opts {
 		if !opt.isCli {
@@ -83,7 +83,7 @@ func (g OptGroup) Opts() map[string]Opt {
 }
 
 // CliOpts returns all the registered CLI options, except the non-CLI options.
-func (g OptGroup) CliOpts() map[string]Opt {
+func (g *OptGroup) CliOpts() map[string]Opt {
 	opts := make(map[string]Opt, len(g.opts))
 	for name, opt := range g.opts {
 		if opt.isCli {
@@ -93,7 +93,7 @@ func (g OptGroup) CliOpts() map[string]Opt {
 	return opts
 }
 
-func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
+func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
 	if value == nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (g OptGroup) setOptValue(name string, value interface{}) (err error) {
 }
 
 // Check whether the required option has no value or a ZORE value.
-func (g OptGroup) checkRequiredOption() (err error) {
+func (g *OptGroup) checkRequiredOption() (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.Default(); v != nil {
@@ -163,7 +163,7 @@ func (g OptGroup) checkRequiredOption() (err error) {
 	return nil
 }
 
-func (g OptGroup) registerStruct(s interface{}) {
+func (g *OptGroup) registerStruct(s interface{}) {
 	sv := reflect.ValueOf(s)
 	if sv.IsNil() || !sv.IsValid() {
 		panic(fmt.Errorf("the struct is invalid or can't be set"))
@@ -180,7 +180,7 @@ func (g OptGroup) registerStruct(s interface{}) {
 	g.registerStructByValue(sv, false)
 }
 
-func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
+func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 	if sv.Kind() == reflect.Ptr {
 		sv = sv.Elem()
 	}
@@ -211,7 +211,7 @@ func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		gname := g.name
 		if name, ok := field.Tag.Lookup("group"); ok {
 			gname = g.c.getGroupName(strings.TrimSpace(name))
-			group = g.c.getGroupByName(gname)
+			group = g.c.getGroupByName(gname, true)
 		}
 
 		isCli := cli
@@ -230,7 +230,7 @@ func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		if t := field.Type.Kind(); t == reflect.Struct {
 			if gname == g.name {
 				gname = name
-				group = g.c.getGroupByName(gname)
+				group = g.c.getGroupByName(gname, true)
 			}
 			group.registerStructByValue(fieldV, isCli)
 			continue
@@ -265,7 +265,7 @@ func (g OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 //
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
-func (g OptGroup) registerOpt(cli bool, opt Opt) {
+func (g *OptGroup) registerOpt(cli bool, opt Opt) {
 	if _, ok := g.opts[opt.Name()]; ok {
 		panic(fmt.Errorf("the option %s has been registered into the group %s",
 			opt.Name(), g.name))
@@ -277,7 +277,7 @@ func (g OptGroup) registerOpt(cli bool, opt Opt) {
 // Value returns the value of the option.
 //
 // Return nil if the option does not exist.
-func (g OptGroup) Value(name string) (v interface{}) {
+func (g *OptGroup) Value(name string) (v interface{}) {
 	g.lock.RLock()
 	v = g.values[name]
 	g.lock.RUnlock()
@@ -285,11 +285,11 @@ func (g OptGroup) Value(name string) (v interface{}) {
 }
 
 // V is the short for g.Value(name).
-func (g OptGroup) V(name string) interface{} {
+func (g *OptGroup) V(name string) interface{} {
 	return g.Value(name)
 }
 
-func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
+func (g *OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	opt := g.Value(name)
 	if opt == nil {
 		return nil, fmt.Errorf("the group %s has no option %s", name, g.name)
@@ -386,7 +386,7 @@ func (g OptGroup) getValue(name string, _type optType) (interface{}, error) {
 // BoolE returns the option value, the type of which is bool.
 //
 // Return an error if no the option or the type of the option isn't bool.
-func (g OptGroup) BoolE(name string) (bool, error) {
+func (g *OptGroup) BoolE(name string) (bool, error) {
 	v, err := g.getValue(name, boolType)
 	if err != nil {
 		return false, err
@@ -395,7 +395,7 @@ func (g OptGroup) BoolE(name string) (bool, error) {
 }
 
 // BoolD is the same as BoolE, but returns the default if there is an error.
-func (g OptGroup) BoolD(name string, _default bool) bool {
+func (g *OptGroup) BoolD(name string, _default bool) bool {
 	if value, err := g.BoolE(name); err == nil {
 		return value
 	}
@@ -403,7 +403,7 @@ func (g OptGroup) BoolD(name string, _default bool) bool {
 }
 
 // Bool is the same as BoolE, but panic if there is an error.
-func (g OptGroup) Bool(name string) bool {
+func (g *OptGroup) Bool(name string) bool {
 	value, err := g.BoolE(name)
 	if err != nil {
 		panic(err)
@@ -414,7 +414,7 @@ func (g OptGroup) Bool(name string) bool {
 // StringE returns the option value, the type of which is string.
 //
 // Return an error if no the option or the type of the option isn't string.
-func (g OptGroup) StringE(name string) (string, error) {
+func (g *OptGroup) StringE(name string) (string, error) {
 	v, err := g.getValue(name, stringType)
 	if err != nil {
 		return "", err
@@ -423,7 +423,7 @@ func (g OptGroup) StringE(name string) (string, error) {
 }
 
 // StringD is the same as StringE, but returns the default if there is an error.
-func (g OptGroup) StringD(name, _default string) string {
+func (g *OptGroup) StringD(name, _default string) string {
 	if value, err := g.StringE(name); err == nil {
 		return value
 	}
@@ -431,7 +431,7 @@ func (g OptGroup) StringD(name, _default string) string {
 }
 
 // String is the same as StringE, but panic if there is an error.
-func (g OptGroup) String(name string) string {
+func (g *OptGroup) String(name string) string {
 	value, err := g.StringE(name)
 	if err != nil {
 		panic(err)
@@ -442,7 +442,7 @@ func (g OptGroup) String(name string) string {
 // IntE returns the option value, the type of which is int.
 //
 // Return an error if no the option or the type of the option isn't int.
-func (g OptGroup) IntE(name string) (int, error) {
+func (g *OptGroup) IntE(name string) (int, error) {
 	v, err := g.getValue(name, intType)
 	if err != nil {
 		return 0, err
@@ -451,7 +451,7 @@ func (g OptGroup) IntE(name string) (int, error) {
 }
 
 // IntD is the same as IntE, but returns the default if there is an error.
-func (g OptGroup) IntD(name string, _default int) int {
+func (g *OptGroup) IntD(name string, _default int) int {
 	if value, err := g.IntE(name); err == nil {
 		return value
 	}
@@ -459,7 +459,7 @@ func (g OptGroup) IntD(name string, _default int) int {
 }
 
 // Int is the same as IntE, but panic if there is an error.
-func (g OptGroup) Int(name string) int {
+func (g *OptGroup) Int(name string) int {
 	value, err := g.IntE(name)
 	if err != nil {
 		panic(err)
@@ -470,7 +470,7 @@ func (g OptGroup) Int(name string) int {
 // Int8E returns the option value, the type of which is int8.
 //
 // Return an error if no the option or the type of the option isn't int8.
-func (g OptGroup) Int8E(name string) (int8, error) {
+func (g *OptGroup) Int8E(name string) (int8, error) {
 	v, err := g.getValue(name, int8Type)
 	if err != nil {
 		return 0, err
@@ -479,7 +479,7 @@ func (g OptGroup) Int8E(name string) (int8, error) {
 }
 
 // Int8D is the same as Int8E, but returns the default if there is an error.
-func (g OptGroup) Int8D(name string, _default int8) int8 {
+func (g *OptGroup) Int8D(name string, _default int8) int8 {
 	if value, err := g.Int8E(name); err == nil {
 		return value
 	}
@@ -487,7 +487,7 @@ func (g OptGroup) Int8D(name string, _default int8) int8 {
 }
 
 // Int8 is the same as Int8E, but panic if there is an error.
-func (g OptGroup) Int8(name string) int8 {
+func (g *OptGroup) Int8(name string) int8 {
 	value, err := g.Int8E(name)
 	if err != nil {
 		panic(err)
@@ -498,7 +498,7 @@ func (g OptGroup) Int8(name string) int8 {
 // Int16E returns the option value, the type of which is int16.
 //
 // Return an error if no the option or the type of the option isn't int16.
-func (g OptGroup) Int16E(name string) (int16, error) {
+func (g *OptGroup) Int16E(name string) (int16, error) {
 	v, err := g.getValue(name, int16Type)
 	if err != nil {
 		return 0, err
@@ -507,7 +507,7 @@ func (g OptGroup) Int16E(name string) (int16, error) {
 }
 
 // Int16D is the same as Int16E, but returns the default if there is an error.
-func (g OptGroup) Int16D(name string, _default int16) int16 {
+func (g *OptGroup) Int16D(name string, _default int16) int16 {
 	if value, err := g.Int16E(name); err == nil {
 		return value
 	}
@@ -515,7 +515,7 @@ func (g OptGroup) Int16D(name string, _default int16) int16 {
 }
 
 // Int16 is the same as Int16E, but panic if there is an error.
-func (g OptGroup) Int16(name string) int16 {
+func (g *OptGroup) Int16(name string) int16 {
 	value, err := g.Int16E(name)
 	if err != nil {
 		panic(err)
@@ -526,7 +526,7 @@ func (g OptGroup) Int16(name string) int16 {
 // Int32E returns the option value, the type of which is int32.
 //
 // Return an error if no the option or the type of the option isn't int32.
-func (g OptGroup) Int32E(name string) (int32, error) {
+func (g *OptGroup) Int32E(name string) (int32, error) {
 	v, err := g.getValue(name, int32Type)
 	if err != nil {
 		return 0, err
@@ -535,7 +535,7 @@ func (g OptGroup) Int32E(name string) (int32, error) {
 }
 
 // Int32D is the same as Int32E, but returns the default if there is an error.
-func (g OptGroup) Int32D(name string, _default int32) int32 {
+func (g *OptGroup) Int32D(name string, _default int32) int32 {
 	if value, err := g.Int32E(name); err == nil {
 		return value
 	}
@@ -543,7 +543,7 @@ func (g OptGroup) Int32D(name string, _default int32) int32 {
 }
 
 // Int32 is the same as Int32E, but panic if there is an error.
-func (g OptGroup) Int32(name string) int32 {
+func (g *OptGroup) Int32(name string) int32 {
 	value, err := g.Int32E(name)
 	if err != nil {
 		panic(err)
@@ -554,7 +554,7 @@ func (g OptGroup) Int32(name string) int32 {
 // Int64E returns the option value, the type of which is int64.
 //
 // Return an error if no the option or the type of the option isn't int64.
-func (g OptGroup) Int64E(name string) (int64, error) {
+func (g *OptGroup) Int64E(name string) (int64, error) {
 	v, err := g.getValue(name, int64Type)
 	if err != nil {
 		return 0, err
@@ -563,7 +563,7 @@ func (g OptGroup) Int64E(name string) (int64, error) {
 }
 
 // Int64D is the same as Int64E, but returns the default if there is an error.
-func (g OptGroup) Int64D(name string, _default int64) int64 {
+func (g *OptGroup) Int64D(name string, _default int64) int64 {
 	if value, err := g.Int64E(name); err == nil {
 		return value
 	}
@@ -571,7 +571,7 @@ func (g OptGroup) Int64D(name string, _default int64) int64 {
 }
 
 // Int64 is the same as Int64E, but panic if there is an error.
-func (g OptGroup) Int64(name string) int64 {
+func (g *OptGroup) Int64(name string) int64 {
 	value, err := g.Int64E(name)
 	if err != nil {
 		panic(err)
@@ -582,7 +582,7 @@ func (g OptGroup) Int64(name string) int64 {
 // UintE returns the option value, the type of which is uint.
 //
 // Return an error if no the option or the type of the option isn't uint.
-func (g OptGroup) UintE(name string) (uint, error) {
+func (g *OptGroup) UintE(name string) (uint, error) {
 	v, err := g.getValue(name, uintType)
 	if err != nil {
 		return 0, err
@@ -591,7 +591,7 @@ func (g OptGroup) UintE(name string) (uint, error) {
 }
 
 // UintD is the same as UintE, but returns the default if there is an error.
-func (g OptGroup) UintD(name string, _default uint) uint {
+func (g *OptGroup) UintD(name string, _default uint) uint {
 	if value, err := g.UintE(name); err == nil {
 		return value
 	}
@@ -599,7 +599,7 @@ func (g OptGroup) UintD(name string, _default uint) uint {
 }
 
 // Uint is the same as UintE, but panic if there is an error.
-func (g OptGroup) Uint(name string) uint {
+func (g *OptGroup) Uint(name string) uint {
 	value, err := g.UintE(name)
 	if err != nil {
 		panic(err)
@@ -610,7 +610,7 @@ func (g OptGroup) Uint(name string) uint {
 // Uint8E returns the option value, the type of which is uint8.
 //
 // Return an error if no the option or the type of the option isn't uint8.
-func (g OptGroup) Uint8E(name string) (uint8, error) {
+func (g *OptGroup) Uint8E(name string) (uint8, error) {
 	v, err := g.getValue(name, uint8Type)
 	if err != nil {
 		return 0, err
@@ -619,7 +619,7 @@ func (g OptGroup) Uint8E(name string) (uint8, error) {
 }
 
 // Uint8D is the same as Uint8E, but returns the default if there is an error.
-func (g OptGroup) Uint8D(name string, _default uint8) uint8 {
+func (g *OptGroup) Uint8D(name string, _default uint8) uint8 {
 	if value, err := g.Uint8E(name); err == nil {
 		return value
 	}
@@ -627,7 +627,7 @@ func (g OptGroup) Uint8D(name string, _default uint8) uint8 {
 }
 
 // Uint8 is the same as Uint8E, but panic if there is an error.
-func (g OptGroup) Uint8(name string) uint8 {
+func (g *OptGroup) Uint8(name string) uint8 {
 	value, err := g.Uint8E(name)
 	if err != nil {
 		panic(err)
@@ -638,7 +638,7 @@ func (g OptGroup) Uint8(name string) uint8 {
 // Uint16E returns the option value, the type of which is uint16.
 //
 // Return an error if no the option or the type of the option isn't uint16.
-func (g OptGroup) Uint16E(name string) (uint16, error) {
+func (g *OptGroup) Uint16E(name string) (uint16, error) {
 	v, err := g.getValue(name, uint16Type)
 	if err != nil {
 		return 0, err
@@ -647,7 +647,7 @@ func (g OptGroup) Uint16E(name string) (uint16, error) {
 }
 
 // Uint16D is the same as Uint16E, but returns the default if there is an error.
-func (g OptGroup) Uint16D(name string, _default uint16) uint16 {
+func (g *OptGroup) Uint16D(name string, _default uint16) uint16 {
 	if value, err := g.Uint16E(name); err == nil {
 		return value
 	}
@@ -655,7 +655,7 @@ func (g OptGroup) Uint16D(name string, _default uint16) uint16 {
 }
 
 // Uint16 is the same as Uint16E, but panic if there is an error.
-func (g OptGroup) Uint16(name string) uint16 {
+func (g *OptGroup) Uint16(name string) uint16 {
 	value, err := g.Uint16E(name)
 	if err != nil {
 		panic(err)
@@ -666,7 +666,7 @@ func (g OptGroup) Uint16(name string) uint16 {
 // Uint32E returns the option value, the type of which is uint32.
 //
 // Return an error if no the option or the type of the option isn't uint32.
-func (g OptGroup) Uint32E(name string) (uint32, error) {
+func (g *OptGroup) Uint32E(name string) (uint32, error) {
 	v, err := g.getValue(name, uint32Type)
 	if err != nil {
 		return 0, err
@@ -675,7 +675,7 @@ func (g OptGroup) Uint32E(name string) (uint32, error) {
 }
 
 // Uint32D is the same as Uint32E, but returns the default if there is an error.
-func (g OptGroup) Uint32D(name string, _default uint32) uint32 {
+func (g *OptGroup) Uint32D(name string, _default uint32) uint32 {
 	if value, err := g.Uint32E(name); err == nil {
 		return value
 	}
@@ -683,7 +683,7 @@ func (g OptGroup) Uint32D(name string, _default uint32) uint32 {
 }
 
 // Uint32 is the same as Uint32E, but panic if there is an error.
-func (g OptGroup) Uint32(name string) uint32 {
+func (g *OptGroup) Uint32(name string) uint32 {
 	value, err := g.Uint32E(name)
 	if err != nil {
 		panic(err)
@@ -694,7 +694,7 @@ func (g OptGroup) Uint32(name string) uint32 {
 // Uint64E returns the option value, the type of which is uint64.
 //
 // Return an error if no the option or the type of the option isn't uint64.
-func (g OptGroup) Uint64E(name string) (uint64, error) {
+func (g *OptGroup) Uint64E(name string) (uint64, error) {
 	v, err := g.getValue(name, uint64Type)
 	if err != nil {
 		return 0, err
@@ -703,7 +703,7 @@ func (g OptGroup) Uint64E(name string) (uint64, error) {
 }
 
 // Uint64D is the same as Uint64E, but returns the default if there is an error.
-func (g OptGroup) Uint64D(name string, _default uint64) uint64 {
+func (g *OptGroup) Uint64D(name string, _default uint64) uint64 {
 	if value, err := g.Uint64E(name); err == nil {
 		return value
 	}
@@ -711,7 +711,7 @@ func (g OptGroup) Uint64D(name string, _default uint64) uint64 {
 }
 
 // Uint64 is the same as Uint64E, but panic if there is an error.
-func (g OptGroup) Uint64(name string) uint64 {
+func (g *OptGroup) Uint64(name string) uint64 {
 	value, err := g.Uint64E(name)
 	if err != nil {
 		panic(err)
@@ -722,7 +722,7 @@ func (g OptGroup) Uint64(name string) uint64 {
 // Float32E returns the option value, the type of which is float32.
 //
 // Return an error if no the option or the type of the option isn't float32.
-func (g OptGroup) Float32E(name string) (float32, error) {
+func (g *OptGroup) Float32E(name string) (float32, error) {
 	v, err := g.getValue(name, float32Type)
 	if err != nil {
 		return 0, err
@@ -732,7 +732,7 @@ func (g OptGroup) Float32E(name string) (float32, error) {
 
 // Float32D is the same as Float32E, but returns the default value if there is
 // an error.
-func (g OptGroup) Float32D(name string, _default float32) float32 {
+func (g *OptGroup) Float32D(name string, _default float32) float32 {
 	if value, err := g.Float32E(name); err == nil {
 		return value
 	}
@@ -740,7 +740,7 @@ func (g OptGroup) Float32D(name string, _default float32) float32 {
 }
 
 // Float32 is the same as Float32E, but panic if there is an error.
-func (g OptGroup) Float32(name string) float32 {
+func (g *OptGroup) Float32(name string) float32 {
 	value, err := g.Float32E(name)
 	if err != nil {
 		panic(err)
@@ -751,7 +751,7 @@ func (g OptGroup) Float32(name string) float32 {
 // Float64E returns the option value, the type of which is float64.
 //
 // Return an error if no the option or the type of the option isn't float64.
-func (g OptGroup) Float64E(name string) (float64, error) {
+func (g *OptGroup) Float64E(name string) (float64, error) {
 	v, err := g.getValue(name, float64Type)
 	if err != nil {
 		return 0, err
@@ -761,7 +761,7 @@ func (g OptGroup) Float64E(name string) (float64, error) {
 
 // Float64D is the same as Float64E, but returns the default value if there is
 // an error.
-func (g OptGroup) Float64D(name string, _default float64) float64 {
+func (g *OptGroup) Float64D(name string, _default float64) float64 {
 	if value, err := g.Float64E(name); err == nil {
 		return value
 	}
@@ -769,7 +769,7 @@ func (g OptGroup) Float64D(name string, _default float64) float64 {
 }
 
 // Float64 is the same as Float64E, but panic if there is an error.
-func (g OptGroup) Float64(name string) float64 {
+func (g *OptGroup) Float64(name string) float64 {
 	value, err := g.Float64E(name)
 	if err != nil {
 		panic(err)
@@ -780,7 +780,7 @@ func (g OptGroup) Float64(name string) float64 {
 // StringsE returns the option value, the type of which is []string.
 //
 // Return an error if no the option or the type of the option isn't []string.
-func (g OptGroup) StringsE(name string) ([]string, error) {
+func (g *OptGroup) StringsE(name string) ([]string, error) {
 	v, err := g.getValue(name, stringsType)
 	if err != nil {
 		return nil, err
@@ -790,7 +790,7 @@ func (g OptGroup) StringsE(name string) ([]string, error) {
 
 // StringsD is the same as StringsE, but returns the default value if there is
 // an error.
-func (g OptGroup) StringsD(name string, _default []string) []string {
+func (g *OptGroup) StringsD(name string, _default []string) []string {
 	if value, err := g.StringsE(name); err == nil {
 		return value
 	}
@@ -798,7 +798,7 @@ func (g OptGroup) StringsD(name string, _default []string) []string {
 }
 
 // Strings is the same as StringsE, but panic if there is an error.
-func (g OptGroup) Strings(name string) []string {
+func (g *OptGroup) Strings(name string) []string {
 	value, err := g.StringsE(name)
 	if err != nil {
 		panic(err)
@@ -809,7 +809,7 @@ func (g OptGroup) Strings(name string) []string {
 // IntsE returns the option value, the type of which is []int.
 //
 // Return an error if no the option or the type of the option isn't []int.
-func (g OptGroup) IntsE(name string) ([]int, error) {
+func (g *OptGroup) IntsE(name string) ([]int, error) {
 	v, err := g.getValue(name, intsType)
 	if err != nil {
 		return nil, err
@@ -819,7 +819,7 @@ func (g OptGroup) IntsE(name string) ([]int, error) {
 
 // IntsD is the same as IntsE, but returns the default value if there is
 // an error.
-func (g OptGroup) IntsD(name string, _default []int) []int {
+func (g *OptGroup) IntsD(name string, _default []int) []int {
 	if value, err := g.IntsE(name); err == nil {
 		return value
 	}
@@ -827,7 +827,7 @@ func (g OptGroup) IntsD(name string, _default []int) []int {
 }
 
 // Ints is the same as IntsE, but panic if there is an error.
-func (g OptGroup) Ints(name string) []int {
+func (g *OptGroup) Ints(name string) []int {
 	value, err := g.IntsE(name)
 	if err != nil {
 		panic(err)
@@ -838,7 +838,7 @@ func (g OptGroup) Ints(name string) []int {
 // Int64sE returns the option value, the type of which is []int64.
 //
 // Return an error if no the option or the type of the option isn't []int64.
-func (g OptGroup) Int64sE(name string) ([]int64, error) {
+func (g *OptGroup) Int64sE(name string) ([]int64, error) {
 	v, err := g.getValue(name, int64sType)
 	if err != nil {
 		return nil, err
@@ -848,7 +848,7 @@ func (g OptGroup) Int64sE(name string) ([]int64, error) {
 
 // Int64sD is the same as Int64sE, but returns the default value if there is
 // an error.
-func (g OptGroup) Int64sD(name string, _default []int64) []int64 {
+func (g *OptGroup) Int64sD(name string, _default []int64) []int64 {
 	if value, err := g.Int64sE(name); err == nil {
 		return value
 	}
@@ -856,7 +856,7 @@ func (g OptGroup) Int64sD(name string, _default []int64) []int64 {
 }
 
 // Int64s is the same as Int64s, but panic if there is an error.
-func (g OptGroup) Int64s(name string) []int64 {
+func (g *OptGroup) Int64s(name string) []int64 {
 	value, err := g.Int64sE(name)
 	if err != nil {
 		panic(err)
@@ -867,7 +867,7 @@ func (g OptGroup) Int64s(name string) []int64 {
 // UintsE returns the option value, the type of which is []uint.
 //
 // Return an error if no the option or the type of the option isn't []uint.
-func (g OptGroup) UintsE(name string) ([]uint, error) {
+func (g *OptGroup) UintsE(name string) ([]uint, error) {
 	v, err := g.getValue(name, uintsType)
 	if err != nil {
 		return nil, err
@@ -877,7 +877,7 @@ func (g OptGroup) UintsE(name string) ([]uint, error) {
 
 // UintsD is the same as UintsE, but returns the default value if there is
 // an error.
-func (g OptGroup) UintsD(name string, _default []uint) []uint {
+func (g *OptGroup) UintsD(name string, _default []uint) []uint {
 	if value, err := g.UintsE(name); err == nil {
 		return value
 	}
@@ -885,7 +885,7 @@ func (g OptGroup) UintsD(name string, _default []uint) []uint {
 }
 
 // Uints is the same as UintsE, but panic if there is an error.
-func (g OptGroup) Uints(name string) []uint {
+func (g *OptGroup) Uints(name string) []uint {
 	value, err := g.UintsE(name)
 	if err != nil {
 		panic(err)
@@ -896,7 +896,7 @@ func (g OptGroup) Uints(name string) []uint {
 // Uint64sE returns the option value, the type of which is []uint64.
 //
 // Return an error if no the option or the type of the option isn't []uint64.
-func (g OptGroup) Uint64sE(name string) ([]uint64, error) {
+func (g *OptGroup) Uint64sE(name string) ([]uint64, error) {
 	v, err := g.getValue(name, uint64sType)
 	if err != nil {
 		return nil, err
@@ -906,7 +906,7 @@ func (g OptGroup) Uint64sE(name string) ([]uint64, error) {
 
 // Uint64sD is the same as Uint64sE, but returns the default value if there is
 // an error.
-func (g OptGroup) Uint64sD(name string, _default []uint64) []uint64 {
+func (g *OptGroup) Uint64sD(name string, _default []uint64) []uint64 {
 	if value, err := g.Uint64sE(name); err == nil {
 		return value
 	}
@@ -914,7 +914,7 @@ func (g OptGroup) Uint64sD(name string, _default []uint64) []uint64 {
 }
 
 // Uint64s is the same as Uint64sE, but panic if there is an error.
-func (g OptGroup) Uint64s(name string) []uint64 {
+func (g *OptGroup) Uint64s(name string) []uint64 {
 	value, err := g.Uint64sE(name)
 	if err != nil {
 		panic(err)
@@ -925,7 +925,7 @@ func (g OptGroup) Uint64s(name string) []uint64 {
 // Float64sE returns the option value, the type of which is []float64.
 //
 // Return an error if no the option or the type of the option isn't []float64.
-func (g OptGroup) Float64sE(name string) ([]float64, error) {
+func (g *OptGroup) Float64sE(name string) ([]float64, error) {
 	v, err := g.getValue(name, float64sType)
 	if err != nil {
 		return nil, err
@@ -935,7 +935,7 @@ func (g OptGroup) Float64sE(name string) ([]float64, error) {
 
 // Float64sD is the same as Float64sE, but returns the default value if there is
 // an error.
-func (g OptGroup) Float64sD(name string, _default []float64) []float64 {
+func (g *OptGroup) Float64sD(name string, _default []float64) []float64 {
 	if value, err := g.Float64sE(name); err == nil {
 		return value
 	}
@@ -943,7 +943,7 @@ func (g OptGroup) Float64sD(name string, _default []float64) []float64 {
 }
 
 // Float64s is the same as Float64sE, but panic if there is an error.
-func (g OptGroup) Float64s(name string) []float64 {
+func (g *OptGroup) Float64s(name string) []float64 {
 	value, err := g.Float64sE(name)
 	if err != nil {
 		panic(err)
