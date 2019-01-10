@@ -23,9 +23,8 @@ import (
 )
 
 func ExampleConfig() {
-	validators := []Validator{NewStrLenValidator(1, 10)}
 	cliOpts1 := []Opt{
-		StrOpt("", "required", "", "required").SetValidators(validators),
+		StrOpt("", "required", "", "required").SetValidators(NewStrLenValidator(1, 10)),
 		BoolOpt("", "yes", true, "test bool option"),
 	}
 

@@ -57,7 +57,7 @@ type ValidatorChainOpt interface {
 	// ReSet the validator chain.
 	//
 	// Notice: this method should return the option itself.
-	SetValidators([]Validator) ValidatorChainOpt
+	SetValidators(...Validator) ValidatorChainOpt
 
 	// Add some new validators into the validator chain.
 	AddValidators(...Validator) ValidatorChainOpt

@@ -169,7 +169,7 @@ func newBaseOpt(short, name string, _default interface{}, help string,
 }
 
 // SetValidators resets the validator chain.
-func (o baseOpt) SetValidators(vs []Validator) ValidatorChainOpt {
+func (o baseOpt) SetValidators(vs ...Validator) ValidatorChainOpt {
 	o.validators = vs
 	return o
 }
