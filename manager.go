@@ -50,7 +50,7 @@ type Config struct {
 	defaultGroupName string
 
 	cli     CliParser
-	parsers map[string]Parser
+	parsers []Parser
 
 	args   []string
 	parsed bool
@@ -66,7 +66,7 @@ func NewConfig(cli CliParser) *Config {
 		defaultGroupName: DefaultGroupName,
 
 		cli:     cli,
-		parsers: make(map[string]Parser, 2),
+		parsers: make([]Parser, 0, 2),
 		groups:  make(map[string]*OptGroup, 2),
 	}
 }
@@ -175,12 +175,12 @@ func (c *Config) Parse(args ...string) (err error) {
 	}
 
 	// Parse the other options by other parsers.
-	for name, parser := range c.parsers {
+	for _, parser := range c.parsers {
 		if err = parser.Parse(c, setGroupOption); err != nil {
-			return fmt.Errorf("The %s parser failed: %s", name, err)
+			return fmt.Errorf("The %s parser failed: %s", parser.Name(), err)
 		}
 		if optErr != nil {
-			return fmt.Errorf("The %s parser failed: %s", name, optErr)
+			return fmt.Errorf("The %s parser failed: %s", parser.Name(), optErr)
 		}
 	}
 
@@ -211,8 +211,8 @@ func (c *Config) Audit() {
 
 	// Parsers
 	fmt.Printf("    Parsers:")
-	for name := range c.parsers {
-		fmt.Printf(" %s", name)
+	for _, parser := range c.parsers {
+		fmt.Printf(" %s", parser.Name())
 	}
 	fmt.Printf("\n")
 
@@ -327,10 +327,13 @@ func (c *Config) AddParser(parser Parser) *Config {
 	c.checkIsParsed(true)
 
 	name := parser.Name()
-	if _, ok := c.parsers[name]; ok {
-		panic(fmt.Errorf("the parser %s has been added", name))
+	for _, p := range c.parsers {
+		if p.Name() == name {
+			panic(fmt.Errorf("the parser %s has been added", name))
+		}
 	}
-	c.parsers[name] = parser
+
+	c.parsers = append(c.parsers, parser)
 	return c
 }
 
@@ -339,15 +342,27 @@ func (c *Config) AddParser(parser Parser) *Config {
 // Return nil if the parser does not exist.
 func (c *Config) RemoveParser(name string) Parser {
 	c.checkIsParsed(true)
-	p := c.parsers[name]
-	delete(c.parsers, name)
-	return p
+	for i, p := range c.parsers {
+		if p.Name() == name {
+			ps := make([]Parser, 0, len(c.parsers)-1)
+			ps = append(ps, c.parsers[:i]...)
+			ps = append(ps, c.parsers[i:]...)
+			c.parsers = ps
+			return p
+		}
+	}
+
+	return nil
 }
 
 // HasParser reports whether the parser named name exists or not.
 func (c *Config) HasParser(name string) bool {
-	_, ok := c.parsers[name]
-	return ok
+	for _, p := range c.parsers {
+		if p.Name() == name {
+			return true
+		}
+	}
+	return false
 }
 
 // RegisterStruct registers the field name of the struct as options into the
