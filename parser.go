@@ -75,22 +75,14 @@ type flagParser struct {
 	underlineToHyphen bool
 }
 
-// NewDefaultFlagCliParser returns a new CLI parser based on flag.
-//
-// The parser will use flag.CommandLine to parse the CLI arguments.
-//
-// If underlineToHyphen is true, it will convert the underline to the hyphen.
+// NewDefaultFlagCliParser returns a new CLI parser based on flag,
+// which is equal to NewFlagCliParser("", 0, underlineToHyphen, flag.CommandLine).
 func NewDefaultFlagCliParser(underlineToHyphen ...bool) Parser {
 	var u2h bool
 	if len(underlineToHyphen) > 0 {
 		u2h = underlineToHyphen[0]
 	}
-
-	return flagParser{
-		flagSet: flag.CommandLine,
-
-		underlineToHyphen: u2h,
-	}
+	return NewFlagCliParser("", 0, u2h, flag.CommandLine)
 }
 
 // NewFlagCliParser returns a new CLI parser based on flag.FlagSet.
@@ -99,27 +91,29 @@ func NewDefaultFlagCliParser(underlineToHyphen ...bool) Parser {
 // "", it will be filepath.Base(os.Args[0]).
 //
 // If underlineToHyphen is true, it will convert the underline to the hyphen.
+// If giving flagSet, errhandler will be ignore, so you maybe set it to 0.
 //
 // When other libraries use the default global flag.FlagSet, that's
 // flag.CommandLine, such as github.com/golang/glog, please use
 // NewDefaultFlagCliParser(), not this function.
 func NewFlagCliParser(appName string, errhandler flag.ErrorHandling,
-	underlineToHyphen ...bool) Parser {
+	underlineToHyphen bool, flagSet ...*flag.FlagSet) Parser {
 
 	if appName == "" {
 		appName = filepath.Base(os.Args[0])
 	}
 
-	var u2h bool
-	if len(underlineToHyphen) > 0 {
-		u2h = underlineToHyphen[0]
+	var fset *flag.FlagSet
+	if len(flagSet) > 0 && flagSet[0] != nil {
+		fset = flagSet[0]
 	}
 
 	return flagParser{
 		name:       appName,
+		flagSet:    fset,
 		errhandler: errhandler,
 
-		underlineToHyphen: u2h,
+		underlineToHyphen: underlineToHyphen,
 	}
 }
 

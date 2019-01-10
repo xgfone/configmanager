@@ -114,7 +114,7 @@ func ExampleNewEnvVarParser() {
 	os.Setenv("TEST_VAR1", "abc")
 	os.Setenv("TEST_GROUP_VAR2", "123")
 
-	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError, true)
 	env := NewEnvVarParser("test")
 	conf := NewConfig(cli).AddParser(env)
 
@@ -137,7 +137,7 @@ func ExampleNewEnvVarParser() {
 
 func ExampleConfig_Watch() {
 	opt := Str("watchval", "abc", "test watch value")
-	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError, true)
 	conf := NewConfig(cli)
 	conf.RegisterCliOpt("test", opt)
 
