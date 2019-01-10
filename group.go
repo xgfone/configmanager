@@ -154,6 +154,15 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 				continue
 			}
 
+			if g.c.isZero {
+				if v := opt.opt.Zero(); v != nil {
+					if err = g.setOptValue(name, opt.opt.Zero()); err != nil {
+						return
+					}
+					continue
+				}
+			}
+
 			if g.c.isRequired {
 				return fmt.Errorf("the option '%s' in the group '%s' has no value",
 					name, g.name)

@@ -39,6 +39,11 @@ type Opt interface {
 	// If having no default value, it should return nil.
 	Default() interface{}
 
+	// Zero returns the zero value of this type.
+	//
+	// For the slice, it should use the empty slice instead of nil.
+	Zero() interface{}
+
 	// IsBool returns true if the option is bool type. Or return false.
 	IsBool() bool
 
@@ -261,6 +266,54 @@ func (o baseOpt) Default() interface{} {
 		return o._default.([]uint64)
 	case float64sType:
 		return o._default.([]float64)
+	default:
+		panic(fmt.Errorf("don't support the type %s", o._type))
+	}
+}
+
+// Zero returns the zero value of this type.
+func (o baseOpt) Zero() interface{} {
+	switch o._type {
+	case boolType:
+		return false
+	case stringType:
+		return ""
+	case intType:
+		return int(0)
+	case int8Type:
+		return int8(0)
+	case int16Type:
+		return int16(0)
+	case int32Type:
+		return int32(0)
+	case int64Type:
+		return int64(0)
+	case uintType:
+		return uint(0)
+	case uint8Type:
+		return uint8(0)
+	case uint16Type:
+		return uint16(0)
+	case uint32Type:
+		return uint32(0)
+	case uint64Type:
+		return uint64(0)
+	case float32Type:
+		return float32(0)
+	case float64Type:
+		return float64(0)
+	case stringsType:
+		return []string{}
+	case intsType:
+		return []int{}
+	case int64sType:
+		return []int64{}
+	case uintsType:
+		return []uint{}
+	case uint64sType:
+		return []uint64{}
+	case float64sType:
+		return []float64{}
 	default:
 		panic(fmt.Errorf("don't support the type %s", o._type))
 	}

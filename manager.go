@@ -42,6 +42,7 @@ var (
 type Config struct {
 	isRequired bool
 	isDebug    bool
+	isZero     bool
 
 	vName    string
 	vVersion string
@@ -69,6 +70,7 @@ func NewConfig(cli ...Parser) *Config {
 	}
 
 	return &Config{
+		isZero:           true,
 		isRequired:       true,
 		defaultGroupName: DefaultGroupName,
 
@@ -278,6 +280,15 @@ func (c *Config) IsDebug() bool {
 func (c *Config) SetRequired(required bool) {
 	c.checkIsParsed(true)
 	c.isRequired = required
+}
+
+// SetZero sets the value of the option to the zero value of its type
+// if the option has no value.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetZero(zero bool) {
+	c.checkIsParsed(true)
+	c.isZero = zero
 }
 
 // SetDefaultGroupName resets the name of the default group.
