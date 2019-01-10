@@ -62,11 +62,16 @@ type Config struct {
 // NewConfig returns a new Config.
 //
 // The name of the default group is DEFAULT.
-func NewConfig(cli Parser) *Config {
+func NewConfig(cli ...Parser) *Config {
+	var _cli Parser
+	if len(cli) > 0 && cli[0] != nil {
+		_cli = cli[0]
+	}
+
 	return &Config{
 		defaultGroupName: DefaultGroupName,
 
-		cli:     cli,
+		cli:     _cli,
 		parsers: make([]Parser, 0, 2),
 		groups:  make(map[string]*OptGroup, 2),
 	}
@@ -107,12 +112,10 @@ func (c *Config) GetVersion() (name, version, help string) {
 
 // ResetCLIParser resets the CLI parser.
 //
-// It must be called before calling c.Parse().
+// If nil, it will disable the CLI parser. Also, it must be called
+// before calling c.Parse().
 func (c *Config) ResetCLIParser(cli Parser) {
 	c.checkIsParsed(true)
-	if cli == nil {
-		panic(fmt.Errorf("The CLI parser must not be nil"))
-	}
 	c.cli = cli
 }
 
@@ -155,22 +158,23 @@ func (c *Config) Parse(args ...string) (err error) {
 	c.checkIsParsed(true)
 	c.parsed = true
 
-	if c.cli == nil {
-		panic(fmt.Errorf("The CLI parser is nil"))
-	}
-
-	if args == nil {
-		c.cliArgs = os.Args[1:]
-	} else {
-		c.cliArgs = args
-	}
-
 	// Ensure that the default group exists.
 	c.getGroupByName(c.defaultGroupName, true)
 
-	// Parse the CLI arguments.
-	if err = c.cli.Parse(c); err != nil {
-		return fmt.Errorf("The CLI parser failed: %s", err)
+	// Parse the CLI arguments
+	if c.cli != nil {
+		if args == nil {
+			c.cliArgs = os.Args[1:]
+		} else {
+			c.cliArgs = args
+		}
+
+		// Parse the CLI arguments.
+		if err = c.cli.Parse(c); err != nil {
+			return fmt.Errorf("The CLI parser failed: %s", err)
+		}
+	} else if c.isDebug {
+		fmt.Println("Warning: no CLI parser")
 	}
 
 	// Parse the other options by other parsers.
@@ -204,7 +208,11 @@ func (c *Config) Audit() {
 	fmt.Printf("%s:\n", filepath.Base(os.Args[0]))
 	fmt.Printf("    Args: %v\n", c.args)
 	fmt.Printf("    DefaultGroup: %s\n", c.defaultGroupName)
-	fmt.Printf("    Cli Parser: %s\n", c.cli.Name())
+	if c.cli != nil {
+		fmt.Printf("    Cli Parser: %s\n", c.cli.Name())
+	} else {
+		fmt.Printf("    Cli Parser: nil\n")
+	}
 
 	// Parsers
 	fmt.Printf("    Parsers:")
