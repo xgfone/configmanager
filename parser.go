@@ -71,14 +71,25 @@ type flagParser struct {
 	flagSet    *flag.FlagSet
 	name       string
 	errhandler flag.ErrorHandling
+
+	underlineToHyphen bool
 }
 
 // NewDefaultFlagCliParser returns a new CLI parser based on flag.
 //
 // The parser will use flag.CommandLine to parse the CLI arguments.
-func NewDefaultFlagCliParser() Parser {
+//
+// If underlineToHyphen is true, it will convert the underline to the hyphen.
+func NewDefaultFlagCliParser(underlineToHyphen ...bool) Parser {
+	var u2h bool
+	if len(underlineToHyphen) > 0 {
+		u2h = underlineToHyphen[0]
+	}
+
 	return flagParser{
 		flagSet: flag.CommandLine,
+
+		underlineToHyphen: u2h,
 	}
 }
 
@@ -87,16 +98,28 @@ func NewDefaultFlagCliParser() Parser {
 // The arguments is the same as that of flag.NewFlagSet(), but if the name is
 // "", it will be filepath.Base(os.Args[0]).
 //
+// If underlineToHyphen is true, it will convert the underline to the hyphen.
+//
 // When other libraries use the default global flag.FlagSet, that's
 // flag.CommandLine, such as github.com/golang/glog, please use
 // NewDefaultFlagCliParser(), not this function.
-func NewFlagCliParser(appName string, errhandler flag.ErrorHandling) Parser {
+func NewFlagCliParser(appName string, errhandler flag.ErrorHandling,
+	underlineToHyphen ...bool) Parser {
+
 	if appName == "" {
 		appName = filepath.Base(os.Args[0])
 	}
+
+	var u2h bool
+	if len(underlineToHyphen) > 0 {
+		u2h = underlineToHyphen[0]
+	}
+
 	return flagParser{
 		name:       appName,
 		errhandler: errhandler,
+
+		underlineToHyphen: u2h,
 	}
 }
 
@@ -119,6 +142,11 @@ func (f flagParser) Parse(c *Config) (err error) {
 			if gname != c.GetDefaultGroupName() {
 				name = fmt.Sprintf("%s_%s", gname, name)
 			}
+
+			if f.underlineToHyphen {
+				name = strings.Replace(name, "_", "-", -1)
+			}
+
 			name2group[name] = gname
 			name2opt[name] = opt.Name()
 
@@ -168,6 +196,7 @@ func (f flagParser) Parse(c *Config) (err error) {
 type iniParser struct {
 	sep     string
 	optName string
+	fmtKey  func(string) string
 }
 
 // NewSimpleIniParser returns a new ini parser based on the file.
@@ -177,15 +206,20 @@ type iniParser struct {
 //
 // The ini parser supports the line comments starting with "#", "//" or ";".
 // The key and the value is separated by an equal sign, that's =. The key must
-// be in one of _, -, number and letter.
+// be in one of _, -, number and letter. If giving fmtKey, it can convert
+// the key in the ini file to the new one.
 //
 // If the value ends with "\", it will continue the next line. The lines will
 // be joined by "\n" together.
 //
 // Notice: the options that have not been assigned to a certain group will be
 // divided into the default group.
-func NewSimpleIniParser(optName string) Parser {
-	return iniParser{optName: optName, sep: "="}
+func NewSimpleIniParser(optName string, fmtKey ...func(string) string) Parser {
+	f := func(key string) string { return key }
+	if len(fmtKey) > 0 && fmtKey[0] != nil {
+		f = fmtKey[0]
+	}
+	return iniParser{optName: optName, sep: "=", fmtKey: f}
 }
 
 func (p iniParser) Name() string {
@@ -273,6 +307,13 @@ func (p iniParser) Parse(c *Config) error {
 			}
 			value = strings.TrimSpace(strings.Join(vs, "\n"))
 		}
+
+		if newkey := p.fmtKey(key); newkey != "" {
+			key = newkey
+		} else {
+			panic(fmt.Errorf("convert the key '%s' to ''", key))
+		}
+
 		c.SetOptValue(gname, key, value)
 	}
 

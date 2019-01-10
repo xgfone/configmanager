@@ -114,9 +114,10 @@ func (c *Config) GetVersion() (name, version, help string) {
 //
 // If nil, it will disable the CLI parser. Also, it must be called
 // before calling c.Parse().
-func (c *Config) ResetCLIParser(cli Parser) {
+func (c *Config) ResetCLIParser(cli Parser) *Config {
 	c.checkIsParsed(true)
 	c.cli = cli
+	return c
 }
 
 // CliArgs returns the parsed cil argments.

@@ -28,7 +28,7 @@ var Conf = NewDefault()
 // The default config manager does not add the environment variable parser.
 // You need to add it by hand, such as NewDefault().AddParser(NewEnvVarParser("")).
 func NewDefault() *Config {
-	cli := NewDefaultFlagCliParser()
+	cli := NewDefaultFlagCliParser(true)
 	ini := NewSimpleIniParser(IniParserOptName)
 	conf := NewConfig(cli).AddParser(ini)
 

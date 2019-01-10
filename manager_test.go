@@ -41,7 +41,7 @@ func ExampleConfig() {
 	Conf.RegisterCliOpts("", cliOpts1)
 	Conf.RegisterCliOpts("cli", cliOpts2)
 	Conf.RegisterOpts("group", opts)
-	if err := Conf.Parse("-cli_no=0", "-required", "required"); err != nil {
+	if err := Conf.Parse("--cli-no=0", "--required", "required"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -82,13 +82,13 @@ func ExampleConfig_RegisterStruct() {
 		Sub3 Sub `cli:"true"`
 	}
 
-	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError)
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError, true)
 	env := NewEnvVarParser("test")
 	conf := NewConfig(cli).AddParser(env)
 
 	s := S{}
 	conf.RegisterStruct("", &s)
-	if err := conf.Parse("-age", "18", "-group_address", "Beijing,Shanghai", "-sub1_parent", "abc", "-sub2_parent", "xyz"); err != nil {
+	if err := conf.Parse("-age", "18", "--group-address", "Beijing,Shanghai", "--sub1-parent", "abc", "--sub2-parent", "xyz"); err != nil {
 		fmt.Println(err)
 		return
 	}
