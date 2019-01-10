@@ -68,7 +68,7 @@ func ExampleConfig_RegisterStruct() {
 	}
 
 	type Sub struct {
-		Parent string
+		Parent string `default:""`
 	}
 
 	type S struct {

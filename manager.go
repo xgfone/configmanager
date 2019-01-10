@@ -69,6 +69,7 @@ func NewConfig(cli ...Parser) *Config {
 	}
 
 	return &Config{
+		isRequired:       true,
 		defaultGroupName: DefaultGroupName,
 
 		cli:     _cli,
@@ -274,9 +275,9 @@ func (c *Config) IsDebug() bool {
 // value is that.
 //
 // If parsed, it will panic when calling it.
-func (c *Config) SetRequired() {
+func (c *Config) SetRequired(required bool) {
 	c.checkIsParsed(true)
-	c.isRequired = true
+	c.isRequired = required
 }
 
 // SetDefaultGroupName resets the name of the default group.
@@ -335,7 +336,7 @@ func (c *Config) AddParser(parser Parser) *Config {
 	name := parser.Name()
 	for _, p := range c.parsers {
 		if p.Name() == name {
-			panic(fmt.Errorf("the parser %s has been added", name))
+			panic(fmt.Errorf("the parser '%s' has been added", name))
 		}
 	}
 
@@ -514,7 +515,7 @@ func (c *Config) Group(group string) *OptGroup {
 	if g, ok := c.groups[group]; ok {
 		return g
 	}
-	panic(fmt.Errorf("have no group %s", group))
+	panic(fmt.Errorf("have no group '%s'", group))
 }
 
 // G is the short for c.Group(group).

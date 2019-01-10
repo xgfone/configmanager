@@ -100,7 +100,7 @@ func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
 
 	opt, ok := g.opts[name]
 	if !ok {
-		return fmt.Errorf("Not the option '%s' in the group '%s'", name, g.name)
+		return fmt.Errorf("not the option '%s' in the group '%s'", name, g.name)
 	}
 
 	if value, err = opt.opt.Parse(value); err != nil {
@@ -155,7 +155,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 			}
 
 			if g.c.isRequired {
-				return fmt.Errorf("the option %s in the group %s has no value",
+				return fmt.Errorf("the option '%s' in the group '%s' has no value",
 					name, g.name)
 			}
 		}
@@ -203,7 +203,7 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 
 		// Check whether the field can be set.
 		if !fieldV.CanSet() {
-			panic(fmt.Errorf("the field %s can't be set", field.Name))
+			panic(fmt.Errorf("the field '%s' can't be set", field.Name))
 		}
 
 		// Get the group
@@ -247,9 +247,8 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		// Get the default value from the tag "default"
 		var err error
 		var _default interface{}
-		if strings.TrimSpace(field.Tag.Get("default")) != "" {
-			_default, err = parseOpt(field.Tag.Get("default"), _type)
-			if err != nil {
+		if v, ok := field.Tag.Lookup("default"); ok {
+			if _default, err = parseOpt(strings.TrimSpace(v), _type); err != nil {
 				panic(fmt.Errorf("can't parse the default in the field %s: %s",
 					field.Name, err))
 			}
@@ -267,7 +266,7 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 // too.
 func (g *OptGroup) registerOpt(cli bool, opt Opt) {
 	if _, ok := g.opts[opt.Name()]; ok {
-		panic(fmt.Errorf("the option %s has been registered into the group %s",
+		panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
 			opt.Name(), g.name))
 	}
 	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
@@ -292,7 +291,7 @@ func (g *OptGroup) V(name string) interface{} {
 func (g *OptGroup) getValue(name string, _type optType) (interface{}, error) {
 	opt := g.Value(name)
 	if opt == nil {
-		return nil, fmt.Errorf("the group %s has no option %s", name, g.name)
+		return nil, fmt.Errorf("the group '%s' has no option '%s'", g.name, name)
 	}
 
 	switch _type {
@@ -377,9 +376,9 @@ func (g *OptGroup) getValue(name string, _type optType) (interface{}, error) {
 			return v, nil
 		}
 	default:
-		return nil, fmt.Errorf("don't support the type %s", _type)
+		return nil, fmt.Errorf("don't support the type '%s'", _type)
 	}
-	return nil, fmt.Errorf("the option %s in the group %s is not the type %s",
+	return nil, fmt.Errorf("the option '%s' in the group '%s' is not the type '%s'",
 		name, g.name, _type)
 }
 
