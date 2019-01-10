@@ -43,46 +43,18 @@ type Parser interface {
 
 	// Parse the value of the registered options.
 	//
-	// The parser can get any information from the first argument.
+	// The parser can get any information from the argument, config.
 	//
-	// When the parser parsed out the option value, it should call the second
-	// argument, which is a function to set the group option. The function has
-	// three arguments, that's, the group name, the option name, and the option
-	// value. For the default group, the group name may be "" instead,
+	// When the parser parsed out the option value, it should call
+	// config.SetOptValue(), which will set the group option.
+	// For the default group, the group name may be "" instead,
 	//
-	// If there is any error, the parser should stop to parse and return it.
-	//
-	// If a certain option has no value, the parser should not return a default
-	// one instead. Also, the parser has no need to convert the value to the
-	// corresponding specific type, just string is ok. Because the configuration
-	// manager will convert the value to the specific type automatically.
-	// Certainly, it's not harmless for the parser to convert the value to
-	// the specific type.
-	Parse(c *Config, setOptionValue func(string, string, interface{})) error
-}
-
-// CliParser is an interface to parse the CLI arguments.
-type CliParser interface {
-	// Name returns the name of the CLI parser to identify a CLI parser.
-	Name() string
-
-	// Parse the value of the registered CLI options.
-	//
-	// The parser can get any information from the first argument.
-	//
-	// When the parser parsed out the option value, it should call the second
-	// argument, which is a function to set the group option. The function has
-	// three arguments, that's, the group name, the option name, and the option
-	// value. For the default group, the group name may be "" instead,
-	//
+	// For the CLI parser, it should get the parsed argument by config.CliArgs(),
+	// which is a string slice, not nil, but it maybe have no elements.
+	// The CLI parser should not use os.Args[1:] as the parsed CLI arguments.
 	// If there are the rest CLI arguments, that's those that does not start
-	// with the prefix "-", "--" or others, etc, the parser should call the
-	// second arguments, which is a function to set the rest arguments.
-	//
-	// The last argument, arguments, is the CLI arguments to be parsed, which
-	// is a string slice, not nil, but it maybe have no elements. The parser
-	// implementor should not use os.Args[1:] when it's empty, because it has
-	// been confirmed.
+	// with the prefix "-", "--" or others, etc, the CLI parser should call
+	// config.SetArgs() to set them.
 	//
 	// If there is any error, the parser should stop to parse and return it.
 	//
@@ -92,8 +64,7 @@ type CliParser interface {
 	// manager will convert the value to the specific type automatically.
 	// Certainly, it's not harmless for the parser to convert the value to
 	// the specific type.
-	Parse(c *Config, setOptionValue func(string, string, interface{}),
-		setArgs func([]string), arguments []string) error
+	Parse(config *Config) error
 }
 
 type flagParser struct {
@@ -105,7 +76,7 @@ type flagParser struct {
 // NewDefaultFlagCliParser returns a new CLI parser based on flag.
 //
 // The parser will use flag.CommandLine to parse the CLI arguments.
-func NewDefaultFlagCliParser() CliParser {
+func NewDefaultFlagCliParser() Parser {
 	return flagParser{
 		flagSet: flag.CommandLine,
 	}
@@ -119,7 +90,7 @@ func NewDefaultFlagCliParser() CliParser {
 // When other libraries use the default global flag.FlagSet, that's
 // flag.CommandLine, such as github.com/golang/glog, please use
 // NewDefaultFlagCliParser(), not this function.
-func NewFlagCliParser(appName string, errhandler flag.ErrorHandling) CliParser {
+func NewFlagCliParser(appName string, errhandler flag.ErrorHandling) Parser {
 	if appName == "" {
 		appName = filepath.Base(os.Args[0])
 	}
@@ -133,8 +104,7 @@ func (f flagParser) Name() string {
 	return "flag"
 }
 
-func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
-	set2 func([]string), arguments []string) (err error) {
+func (f flagParser) Parse(c *Config) (err error) {
 	// Register the options into flag.FlagSet.
 	flagSet := f.flagSet
 	if flagSet == nil {
@@ -173,7 +143,7 @@ func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
 	_version := flagSet.Bool(name, false, help)
 
 	// Parse the CLI arguments.
-	if err = flagSet.Parse(arguments); err != nil {
+	if err = flagSet.Parse(c.CliArgs()); err != nil {
 		return
 	}
 
@@ -183,12 +153,12 @@ func (f flagParser) Parse(c *Config, set1 func(string, string, interface{}),
 	}
 
 	// Acquire the result.
-	set2(flagSet.Args())
+	c.SetArgs(flagSet.Args())
 	flagSet.Visit(func(fg *flag.Flag) {
 		gname := name2group[fg.Name]
 		optname := name2opt[fg.Name]
 		if gname != "" && optname != "" && fg.Name != name {
-			set1(gname, optname, fg.Value.String())
+			c.SetOptValue(gname, optname, fg.Value.String())
 		}
 	})
 
@@ -225,7 +195,7 @@ func (p iniParser) Name() string {
 // func (p iniParser) Parse(_default string, opts map[string][]Opt,
 // 	conf map[string]interface{}) (results map[string]map[string]interface{},
 // 	err error) {
-func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error {
+func (p iniParser) Parse(c *Config) error {
 	// Read the content of the config file.
 	filename := c.Group("").StringD(p.optName, "")
 	if filename == "" {
@@ -303,7 +273,7 @@ func (p iniParser) Parse(c *Config, set func(string, string, interface{})) error
 			}
 			value = strings.TrimSpace(strings.Join(vs, "\n"))
 		}
-		set(gname, key, value)
+		c.SetOptValue(gname, key, value)
 	}
 
 	return nil
@@ -333,7 +303,7 @@ func (e envVarParser) Name() string {
 // func (e envVarParser) Parse(_default string, opts map[string][]Opt,
 // 	conf map[string]interface{}) (results map[string]map[string]interface{},
 // 	err error) {
-func (e envVarParser) Parse(c *Config, set func(string, string, interface{})) error {
+func (e envVarParser) Parse(c *Config) error {
 	// Initialize the prefix
 	prefix := e.prefix
 	if prefix != "" {
@@ -359,7 +329,7 @@ func (e envVarParser) Parse(c *Config, set func(string, string, interface{})) er
 		items := strings.SplitN(env, "=", 2)
 		if len(items) == 2 {
 			if info, ok := env2opts[items[0]]; ok {
-				set(info[0], info[1], items[1])
+				c.SetOptValue(info[0], info[1], items[1])
 			}
 		}
 	}

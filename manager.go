@@ -49,8 +49,9 @@ type Config struct {
 
 	defaultGroupName string
 
-	cli     CliParser
+	cli     Parser
 	parsers []Parser
+	cliArgs []string
 
 	args   []string
 	parsed bool
@@ -61,7 +62,7 @@ type Config struct {
 // NewConfig returns a new Config.
 //
 // The name of the default group is DEFAULT.
-func NewConfig(cli CliParser) *Config {
+func NewConfig(cli Parser) *Config {
 	return &Config{
 		defaultGroupName: DefaultGroupName,
 
@@ -107,12 +108,17 @@ func (c *Config) GetVersion() (name, version, help string) {
 // ResetCLIParser resets the CLI parser.
 //
 // It must be called before calling c.Parse().
-func (c *Config) ResetCLIParser(cli CliParser) {
+func (c *Config) ResetCLIParser(cli Parser) {
 	c.checkIsParsed(true)
 	if cli == nil {
 		panic(fmt.Errorf("The CLI parser must not be nil"))
 	}
 	c.cli = cli
+}
+
+// CliArgs returns the parsed cil argments.
+func (c *Config) CliArgs() []string {
+	return c.cliArgs
 }
 
 // Watch watches the change of values.
@@ -154,33 +160,23 @@ func (c *Config) Parse(args ...string) (err error) {
 	}
 
 	if args == nil {
-		args = os.Args[1:]
+		c.cliArgs = os.Args[1:]
+	} else {
+		c.cliArgs = args
 	}
 
 	// Ensure that the default group exists.
 	c.getGroupByName(c.defaultGroupName, true)
 
-	var optErr error
-	setGroupOption := func(gname, name string, value interface{}) {
-		// optErr = c.getGroupByName(gname, true).setOptValue(name, value)
-		optErr = c.SetOptValue(gname, name, value)
-	}
-
 	// Parse the CLI arguments.
-	if err = c.cli.Parse(c, setGroupOption, c.setArgs, args); err != nil {
+	if err = c.cli.Parse(c); err != nil {
 		return fmt.Errorf("The CLI parser failed: %s", err)
-	}
-	if optErr != nil {
-		return fmt.Errorf("The CLI parser failed: %s", optErr)
 	}
 
 	// Parse the other options by other parsers.
 	for _, parser := range c.parsers {
-		if err = parser.Parse(c, setGroupOption); err != nil {
+		if err = parser.Parse(c); err != nil {
 			return fmt.Errorf("The %s parser failed: %s", parser.Name(), err)
-		}
-		if optErr != nil {
-			return fmt.Errorf("The %s parser failed: %s", parser.Name(), optErr)
 		}
 	}
 
@@ -194,7 +190,8 @@ func (c *Config) Parse(args ...string) (err error) {
 	return
 }
 
-func (c *Config) setArgs(args []string) {
+// SetArgs sets the cli rest arguments.
+func (c *Config) SetArgs(args []string) {
 	c.args = args
 }
 
