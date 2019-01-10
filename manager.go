@@ -38,6 +38,11 @@ var (
 	ErrNotParsed = fmt.Errorf("the config manager has not been parsed")
 )
 
+// StructValidator is used to validate the struct value.
+type StructValidator interface {
+	Validate() error
+}
+
 // Config is used to manage the configuration parsers.
 type Config struct {
 	isRequired bool
@@ -58,6 +63,8 @@ type Config struct {
 	parsed bool
 	groups map[string]*OptGroup
 	watch  func(string, string, interface{})
+
+	validators []func() error
 }
 
 // NewConfig returns a new Config.
@@ -77,6 +84,8 @@ func NewConfig(cli ...Parser) *Config {
 		cli:     _cli,
 		parsers: make([]Parser, 0, 2),
 		groups:  make(map[string]*OptGroup, 2),
+
+		validators: make([]func() error, 0),
 	}
 }
 
@@ -191,6 +200,12 @@ func (c *Config) Parse(args ...string) (err error) {
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
 		if err = group.checkRequiredOption(); err != nil {
+			return err
+		}
+	}
+
+	for _, v := range c.validators {
+		if err = v(); err != nil {
 			return err
 		}
 	}
@@ -403,6 +418,9 @@ func (c *Config) HasParser(name string) bool {
 // of the whole struct. If the value of the tag "group" is empty, the default
 // group will be used in preference.
 //
+// If the struct has implemented the interface StructValidator, this validator
+// will be called automatically after having parsed.
+//
 // Notice: If having no the tag "name", the name of the option is the lower-case
 // of the field name.
 //
@@ -417,6 +435,9 @@ func (c *Config) HasParser(name string) bool {
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	c.checkIsParsed(true)
 	c.getGroupByName(group, true).registerStruct(s)
+	if v, ok := s.(StructValidator); ok {
+		c.validators = append(c.validators, v.Validate)
+	}
 }
 
 // RegisterCliOpt registers the option into the group.

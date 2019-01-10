@@ -20,7 +20,33 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"testing"
 )
+
+type testStruct struct {
+	Age int `cli:"1"`
+}
+
+func (s *testStruct) Validate() error {
+	s.Age = s.Age + 1
+	return nil
+}
+
+func TestStructValidate(t *testing.T) {
+	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError, true)
+	env := NewEnvVarParser("test")
+	conf := NewConfig(cli).AddParser(env)
+
+	s := testStruct{}
+	conf.RegisterStruct("", &s)
+	if err := conf.Parse("-age", "2"); err != nil {
+		t.Error(err)
+	}
+
+	if s.Age != 3 {
+		t.Errorf("Age should be 3, but is %d", s.Age)
+	}
+}
 
 func ExampleConfig() {
 	cliOpts1 := []Opt{
