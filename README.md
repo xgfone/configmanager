@@ -29,6 +29,22 @@ The supported Go version: `1.x`.
 In order to deveplop a new parser, you just need to implement the interface `Parser`. But `Config` distinguishes the CLI parser and the common parser, which have the same interface `Parser`. But `Config` must have no more than one CLI parser set by `ResetCLIParser()` and maybe have many common parsers added by `AddParser()`. See the example above.
 
 
+## Read and Modify the value from `Config`
+
+It's thread-safe for the application to read the configuration value from the `Config`, but you must not modify it.
+
+If you want to the value of a certain configuration, you should call the method `SetOptValue(groupName, optName, newOptValue)`. For the default group, `groupName` may be `""`. If the setting fails, it will return an error. Moreover, `SetOptValue` is thread-safe. During the running, therefore, you can get and set the configuration value between threads dynamically.
+
+For the modifiable type, such as slice or map, in order to modify them, you should clone them firstly, then modify the cloned value and call `SetOptValue` with the cloned one.
+
+
+## Watch the changed configuration
+
+You can use the method `Watch(callback func(groupName, optName string, optValue interface{}))` to monitor what the configuration is modified to: when a certain configuration is modified, the callback function will be called.
+
+Notice: the callback should finish as soon as possible because the callback is called synchronously at when the configuration is modified.
+
+
 ## Usage
 ```go
 package main
