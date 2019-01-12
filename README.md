@@ -33,7 +33,7 @@ In order to deveplop a new parser, you just need to implement the interface `Par
 
 It's thread-safe for the application to read the configuration value from the `Config`, but you must not modify it.
 
-If you want to the value of a certain configuration, you should call the method `SetOptValue(groupName, optName, newOptValue)`. For the default group, `groupName` may be `""`. If the setting fails, it will return an error. Moreover, `SetOptValue` is thread-safe. During the running, therefore, you can get and set the configuration value between threads dynamically.
+If you want to the value of a certain configuration, you should call the method `SetOptValue(groupName, optName, newOptValue)`. For the default group, `groupName` may be `""`. If the setting fails, it will return an error. Moreover, `SetOptValue` is thread-safe. During the running, therefore, you can get and set the configuration value between goroutines dynamically.
 
 For the modifiable type, such as slice or map, in order to modify them, you should clone them firstly, then modify the cloned value and call `SetOptValue` with the cloned one.
 
