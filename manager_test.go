@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 type testStruct struct {
@@ -105,6 +106,9 @@ func ExampleConfig_RegisterStruct() {
 		Sub1 Sub `group:"sub1" cli:"true"`
 		Sub2 Sub `cli:"true"`
 		Sub3 Sub `cli:"true"`
+
+		Duration time.Duration `cli:"true"`
+		Time     time.Time     `cli:"true"`
 	}
 
 	cli := NewFlagCliParser(os.Args[0], flag.ExitOnError, true)
@@ -113,13 +117,16 @@ func ExampleConfig_RegisterStruct() {
 
 	s := S{}
 	conf.RegisterStruct("", &s)
-	if err := conf.Parse("-age", "18", "--group-address", "Beijing,Shanghai", "--sub1-parent", "abc", "--sub2-parent", "xyz"); err != nil {
+	if err := conf.Parse("-age", "18", "--group-address", "Beijing,Shanghai",
+		"--sub1-parent", "abc", "--sub2-parent", "xyz", "--duration", "1s", "--time", "2019-01-24T23:52:01Z"); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	fmt.Printf("Name: %s\n", s.Name)
 	fmt.Printf("Age: %d\n", s.Age)
+	fmt.Printf("Duration: %d\n", s.Duration)
+	fmt.Printf("Time: %s\n", s.Time)
 	fmt.Printf("Address: %s\n", s.Address.Address)
 	fmt.Printf("Parent1: %s\n", s.Sub1.Parent)
 	fmt.Printf("Parent2: %s\n", s.Sub2.Parent)
@@ -128,6 +135,8 @@ func ExampleConfig_RegisterStruct() {
 	// Output:
 	// Name: Aaron
 	// Age: 18
+	// Duration: 1000000000
+	// Time: 2019-01-24 23:52:01 +0000 UTC
 	// Address: [Beijing Shanghai]
 	// Parent1: abc
 	// Parent2: xyz

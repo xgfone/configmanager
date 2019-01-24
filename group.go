@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 // DefaultGroupName is the name of the default group.
@@ -237,15 +238,22 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 
 		// Check whether the field is the struct.
 		if t := field.Type.Kind(); t == reflect.Struct {
-			if gname == g.name {
-				gname = name
-				group = g.c.getGroupByName(gname, true)
+			if _, ok := fieldV.Interface().(time.Time); !ok {
+				if gname == g.name {
+					gname = name
+					group = g.c.getGroupByName(gname, true)
+				}
+				group.registerStructByValue(fieldV, isCli)
+				continue
 			}
-			group.registerStructByValue(fieldV, isCli)
-			continue
 		}
 
 		_type := getOptType(fieldV)
+		if _type == int64Type {
+			if _, ok := fieldV.Interface().(time.Duration); ok {
+				_type = durationType
+			}
+		}
 
 		// Get the short name from the tag "short"
 		short := strings.TrimSpace(field.Tag.Get("short"))

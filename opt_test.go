@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 )
 
 func TestOpt(t *testing.T) {
@@ -15,6 +16,18 @@ func TestOpt(t *testing.T) {
 		t.Fail()
 	}
 	if newBaseOpt("", "string", nil, "", stringType).Zero().(string) != "" {
+		t.Fail()
+	}
+	if newBaseOpt("", "duration", nil, "", durationType).Zero().(time.Duration) != 0 {
+		t.Fail()
+	}
+	if newBaseOpt("", "time", nil, "", timeType).Zero().(time.Time) != *new(time.Time) {
+		t.Fail()
+	}
+	if len(newBaseOpt("", "durations", nil, "", durationsType).Zero().([]time.Duration)) != 0 {
+		t.Fail()
+	}
+	if len(newBaseOpt("", "times", nil, "", timesType).Zero().([]time.Time)) != 0 {
 		t.Fail()
 	}
 	if len(newBaseOpt("", "strings", nil, "", stringsType).Zero().([]string)) != 0 {

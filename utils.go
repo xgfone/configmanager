@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func inMap(m map[string]interface{}, key string) bool {
@@ -145,6 +146,8 @@ func ToString(_v interface{}) (v string, err error) {
 }
 
 // ToStringSlice does the best to convert a certain value to []string.
+//
+// If the value is string, they are separated by the comma.
 func ToStringSlice(_v interface{}) (v []string, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -165,6 +168,8 @@ func ToStringSlice(_v interface{}) (v []string, err error) {
 }
 
 // ToIntSlice does the best to convert a certain value to []int.
+//
+// If the value is string, they are separated by the comma.
 func ToIntSlice(_v interface{}) (v []int, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -190,6 +195,8 @@ func ToIntSlice(_v interface{}) (v []int, err error) {
 }
 
 // ToInt64Slice does the best to convert a certain value to []int64.
+//
+// If the value is string, they are separated by the comma.
 func ToInt64Slice(_v interface{}) (v []int64, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -215,6 +222,8 @@ func ToInt64Slice(_v interface{}) (v []int64, err error) {
 }
 
 // ToUintSlice does the best to convert a certain value to []uint.
+//
+// If the value is string, they are separated by the comma.
 func ToUintSlice(_v interface{}) (v []uint, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -240,6 +249,8 @@ func ToUintSlice(_v interface{}) (v []uint, err error) {
 }
 
 // ToUint64Slice does the best to convert a certain value to []uint64.
+//
+// If the value is string, they are separated by the comma.
 func ToUint64Slice(_v interface{}) (v []uint64, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -265,6 +276,8 @@ func ToUint64Slice(_v interface{}) (v []uint64, err error) {
 }
 
 // ToFloat64Slice does the best to convert a certain value to []float64.
+//
+// If the value is string, they are separated by the comma.
 func ToFloat64Slice(_v interface{}) (v []float64, err error) {
 	switch vv := _v.(type) {
 	case string:
@@ -285,6 +298,62 @@ func ToFloat64Slice(_v interface{}) (v []float64, err error) {
 		v = vv
 	default:
 		err = fmt.Errorf("unknown type of %T", _v)
+	}
+	return
+}
+
+// ToTimes does the best to convert a certain value to []time.Time.
+//
+// If the value is string, they are separated by the comma and the each value
+// is parsed by the format, layout.
+func ToTimes(layout string, _v interface{}) (v []time.Time, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]time.Time, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := time.Parse(layout, s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, i)
+		}
+	case []time.Time:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of '%T'", _v)
+	}
+	return
+}
+
+// ToDurations does the best to convert a certain value to []time.Duration.
+//
+// If the value is string, they are separated by the comma and the each value
+// is parsed by time.ParseDuration().
+func ToDurations(_v interface{}) (v []time.Duration, err error) {
+	switch vv := _v.(type) {
+	case string:
+		vs := strings.Split(vv, ",")
+		v = make([]time.Duration, 0, len(vs))
+		for _, s := range vs {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+
+			i, err := time.ParseDuration(s)
+			if err != nil {
+				return nil, err
+			}
+			v = append(v, i)
+		}
+	case []time.Duration:
+		v = vv
+	default:
+		err = fmt.Errorf("unknown type of '%T'", _v)
 	}
 	return
 }

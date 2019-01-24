@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 	"reflect"
+	"time"
 )
 
 // Opt stands for an opt value.
@@ -74,6 +75,8 @@ const (
 	uint64Type
 	float32Type
 	float64Type
+	durationType
+	timeType
 
 	stringsType
 	intsType
@@ -81,31 +84,37 @@ const (
 	uintsType
 	uint64sType
 	float64sType
+	durationsType
+	timesType
 )
 
 var optTypeMap = map[optType]string{
-	noneType:    "none",
-	boolType:    "bool",
-	stringType:  "string",
-	intType:     "int",
-	int8Type:    "int8",
-	int16Type:   "int16",
-	int32Type:   "int32",
-	int64Type:   "int64",
-	uintType:    "uint",
-	uint8Type:   "uint8",
-	uint16Type:  "uint16",
-	uint32Type:  "uint32",
-	uint64Type:  "uint64",
-	float32Type: "float32",
-	float64Type: "float64",
+	noneType:     "none",
+	boolType:     "bool",
+	stringType:   "string",
+	intType:      "int",
+	int8Type:     "int8",
+	int16Type:    "int16",
+	int32Type:    "int32",
+	int64Type:    "int64",
+	uintType:     "uint",
+	uint8Type:    "uint8",
+	uint16Type:   "uint16",
+	uint32Type:   "uint32",
+	uint64Type:   "uint64",
+	float32Type:  "float32",
+	float64Type:  "float64",
+	durationType: "time.Duration",
+	timeType:     "time.Time",
 
-	stringsType:  "[]string",
-	intsType:     "[]int",
-	int64sType:   "[]int64",
-	uintsType:    "[]uint",
-	uint64sType:  "[]uint64",
-	float64sType: "[]float64",
+	stringsType:   "[]string",
+	intsType:      "[]int",
+	int64sType:    "[]int64",
+	uintsType:     "[]uint",
+	uint64sType:   "[]uint64",
+	float64sType:  "[]float64",
+	durationsType: "[]time.Duration",
+	timesType:     "[]time.Time",
 }
 
 var kind2optType = map[reflect.Kind]optType{
@@ -131,6 +140,8 @@ func getOptType(v reflect.Value) optType {
 	}
 
 	switch v.Interface().(type) {
+	case time.Time:
+		return timeType
 	case []string:
 		return stringsType
 	case []int:
@@ -143,6 +154,10 @@ func getOptType(v reflect.Value) optType {
 		return uint64sType
 	case []float64:
 		return float64sType
+	case []time.Duration:
+		return durationsType
+	case []time.Time:
+		return timesType
 	default:
 		panic(fmt.Errorf("doesn't support the type %s", v.Type().Name()))
 	}
@@ -302,6 +317,10 @@ func (o baseOpt) Zero() interface{} {
 		return float32(0)
 	case float64Type:
 		return float64(0)
+	case durationType:
+		return time.Duration(0)
+	case timeType:
+		return time.Time{}
 	case stringsType:
 		return []string{}
 	case intsType:
@@ -314,6 +333,10 @@ func (o baseOpt) Zero() interface{} {
 		return []uint64{}
 	case float64sType:
 		return []float64{}
+	case durationsType:
+		return []time.Duration{}
+	case timesType:
+		return []time.Time{}
 	default:
 		panic(fmt.Errorf("don't support the type %s", o._type))
 	}
@@ -336,6 +359,44 @@ func parseOpt(data interface{}, _type optType) (v interface{}, err error) {
 		v, err = ToUint64(data)
 	case float32Type, float64Type:
 		v, err = ToFloat64(data)
+	case durationType:
+		switch arg := data.(type) {
+		case time.Duration:
+			return arg, nil
+		case int:
+			return time.Duration(arg), nil
+		case int8:
+			return time.Duration(arg), nil
+		case int16:
+			return time.Duration(arg), nil
+		case int32:
+			return time.Duration(arg), nil
+		case int64:
+			return time.Duration(arg), nil
+		case uint:
+			return time.Duration(arg), nil
+		case uint8:
+			return time.Duration(arg), nil
+		case uint16:
+			return time.Duration(arg), nil
+		case uint32:
+			return time.Duration(arg), nil
+		case uint64:
+			return time.Duration(arg), nil
+		case string:
+			return time.ParseDuration(arg)
+		default:
+			return nil, fmt.Errorf("don't support the type '%s' for time.Duration", _type)
+		}
+	case timeType:
+		switch arg := data.(type) {
+		case time.Time:
+			return arg, nil
+		case string:
+			return time.Parse(time.RFC3339Nano, arg)
+		default:
+			return nil, fmt.Errorf("don't support the type '%s' for time.Time", _type)
+		}
 	case stringsType:
 		return ToStringSlice(data)
 	case intsType:
@@ -348,8 +409,12 @@ func parseOpt(data interface{}, _type optType) (v interface{}, err error) {
 		return ToUint64Slice(data)
 	case float64sType:
 		return ToFloat64Slice(data)
+	case durationsType:
+		return ToDurations(data)
+	case timesType:
+		return ToTimes(time.RFC3339Nano, data)
 	default:
-		err = fmt.Errorf("don't support the type %s", _type)
+		err = fmt.Errorf("don't support the type '%s'", _type)
 	}
 
 	if err != nil {
@@ -450,6 +515,34 @@ func Float32Opt(short, name string, _default float32, help string) ValidatorChai
 // Float64Opt return a new float64 option.
 func Float64Opt(short, name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, float64Type)
+}
+
+// DurationOpt return a new time.Duration option.
+//
+// For the string value, it will use time.ParseDuration to parse it.
+func DurationOpt(short, name string, _default time.Duration, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, durationType)
+}
+
+// TimeOpt return a new time.Time option.
+//
+// For the string value, it will be parsed by the layout time.RFC3339Nano.
+func TimeOpt(short, name string, _default time.Time, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, timeType)
+}
+
+// DurationsOpt return a new []time.Duration option.
+//
+// For the string value, it will use time.ParseDuration to parse it.
+func DurationsOpt(short, name string, _default []time.Duration, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, durationsType)
+}
+
+// TimesOpt return a new []time.Time option.
+//
+// For the string value, it will be parsed by the layout time.RFC3339Nano.
+func TimesOpt(short, name string, _default []time.Time, help string) ValidatorChainOpt {
+	return newBaseOpt(short, name, _default, help, timesType)
 }
 
 // StringsOpt return a new []string option.
