@@ -645,6 +645,26 @@ func Float64(name string, _default float64, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, float64Type)
 }
 
+// Duration is equal to DurationOpt("", name, _default, help).
+func Duration(name string, _default time.Duration, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, durationType)
+}
+
+// Time is equal to TimeOpt("", name, _default, help).
+func Time(short, name string, _default time.Time, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, timeType)
+}
+
+// Durations is equal to DurationsOpt("", name, _default, help).
+func Durations(short, name string, _default []time.Duration, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, durationsType)
+}
+
+// Times is equal to TimesOpt("", name, _default, help).
+func Times(short, name string, _default []time.Time, help string) ValidatorChainOpt {
+	return newBaseOpt("", name, _default, help, timesType)
+}
+
 // Strings is equal to StringsOpt("", name, _default, help).
 func Strings(name string, _default []string, help string) ValidatorChainOpt {
 	return newBaseOpt("", name, _default, help, stringsType)
