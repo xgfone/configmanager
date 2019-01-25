@@ -269,6 +269,14 @@ func (o baseOpt) Default() interface{} {
 		return o._default.(float32)
 	case float64Type:
 		return o._default.(float64)
+	case durationType:
+		return o._default.(time.Duration)
+	case timeType:
+		return o._default.(time.Time)
+	case durationsType:
+		return o._default.([]time.Duration)
+	case timesType:
+		return o._default.([]time.Time)
 	case stringsType:
 		return o._default.([]string)
 	case intsType:
