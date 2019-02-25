@@ -213,7 +213,7 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 
 		// Check whether the field can be set.
 		if !fieldV.CanSet() {
-			panic(fmt.Errorf("the field '%s' can't be set", field.Name))
+			continue
 		}
 
 		// Get the group
