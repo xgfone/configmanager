@@ -19,7 +19,6 @@ package config
 import (
 	"fmt"
 	"html/template"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -36,22 +35,28 @@ func IsZero(v interface{}) bool {
 	return !ok
 }
 
-// bool2Int converts the bool to int64.
-func bool2Int(b bool) int64 {
+// bool2Int64 converts the bool to int64.
+func bool2Int64(b bool) int64 {
 	if b {
 		return 1
 	}
 	return 0
 }
 
-// ToBool does the best to convert a certain value to bool
+// ToBool does the best to convert any certain value to bool.
 //
-// For "t", "T", "1", "on", "On", "ON", "true", "True", "TRUE", it's true.
-// For "f", "F", "0", "off", "Off", "OFF", "false", "False", "FALSE", it's false.
+// When the value is string, for "t", "T", "1", "on", "On", "ON", "true",
+// "True", "TRUE", it's true, for "f", "F", "0", "off", "Off", "OFF", "false",
+// "False", "FALSE", "", it's false.
+//
+// For other types, if the value is ZERO of the type, it's false. Or it's true.
 func ToBool(v interface{}) (bool, error) {
-	switch v.(type) {
+	switch _v := v.(type) {
+	case nil:
+		return false, nil
+	case bool:
+		return _v, nil
 	case string:
-		_v := v.(string)
 		switch _v {
 		case "t", "T", "1", "on", "On", "ON", "true", "True", "TRUE":
 			return true, nil
@@ -64,81 +69,178 @@ func ToBool(v interface{}) (bool, error) {
 	return !IsZero(v), nil
 }
 
-// ToInt64 does the best to convert a certain value to int64.
+// ToInt64 does the best to convert any certain value to int64.
 func ToInt64(_v interface{}) (v int64, err error) {
-	switch _v.(type) {
-	case complex64, complex128:
-		v = int64(real(reflect.ValueOf(_v).Complex()))
+	switch t := _v.(type) {
+	case nil:
 	case bool:
-		v = int64(bool2Int(_v.(bool)))
-	case int, int8, int16, int32, int64:
-		v = reflect.ValueOf(_v).Int()
-	case uint, uint8, uint16, uint32, uint64:
-		v = int64(reflect.ValueOf(_v).Uint())
-	case float32, float64:
-		v = int64(reflect.ValueOf(_v).Float())
+		v = bool2Int64(t)
 	case string:
-		return strconv.ParseInt(_v.(string), 10, 64)
+		v, err = strconv.ParseInt(t, 10, 64)
+	case int:
+		v = int64(t)
+	case int8:
+		v = int64(t)
+	case int16:
+		v = int64(t)
+	case int32:
+		v = int64(t)
+	case int64:
+		v = t
+	case uint:
+		v = int64(t)
+	case uint8:
+		v = int64(t)
+	case uint16:
+		v = int64(t)
+	case uint32:
+		v = int64(t)
+	case uint64:
+		v = int64(t)
+	case float32:
+		v = int64(t)
+	case float64:
+		v = int64(t)
+	case complex64:
+		v = int64(real(t))
+	case complex128:
+		v = int64(real(t))
 	default:
 		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
 
-// ToUint64 does the best to convert a certain value to uint64.
+// ToUint64 does the best to convert any certain value to uint64.
 func ToUint64(_v interface{}) (v uint64, err error) {
-	switch _v.(type) {
-	case complex64, complex128:
-		v = uint64(real(reflect.ValueOf(_v).Complex()))
+	switch t := _v.(type) {
+	case nil:
 	case bool:
-		v = uint64(bool2Int(_v.(bool)))
-	case int, int8, int16, int32, int64:
-		v = reflect.ValueOf(_v).Uint()
-	case uint, uint8, uint16, uint32, uint64:
-		v = uint64(reflect.ValueOf(_v).Uint())
-	case float32, float64:
-		v = uint64(reflect.ValueOf(_v).Float())
+		v = uint64(bool2Int64(t))
 	case string:
-		return strconv.ParseUint(_v.(string), 10, 64)
+		v, err = strconv.ParseUint(t, 10, 64)
+	case int:
+		v = uint64(t)
+	case int8:
+		v = uint64(t)
+	case int16:
+		v = uint64(t)
+	case int32:
+		v = uint64(t)
+	case int64:
+		v = uint64(t)
+	case uint:
+		v = uint64(t)
+	case uint8:
+		v = uint64(t)
+	case uint16:
+		v = uint64(t)
+	case uint32:
+		v = uint64(t)
+	case uint64:
+		v = t
+	case float32:
+		v = uint64(t)
+	case float64:
+		v = uint64(t)
+	case complex64:
+		v = uint64(real(t))
+	case complex128:
+		v = uint64(real(t))
 	default:
 		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
 
-// ToFloat64 does the best to convert a certain value to float64.
+// ToFloat64 does the best to convert any certain value to float64.
 func ToFloat64(_v interface{}) (v float64, err error) {
-	switch _v.(type) {
-	case complex64, complex128:
-		v = float64(real(reflect.ValueOf(_v).Complex()))
+	switch t := _v.(type) {
+	case nil:
 	case bool:
-		v = float64(bool2Int(_v.(bool)))
-	case int, int8, int16, int32, int64:
-		v = float64(reflect.ValueOf(_v).Int())
-	case uint, uint8, uint16, uint32, uint64:
-		v = float64(reflect.ValueOf(_v).Uint())
-	case float32, float64:
-		v = reflect.ValueOf(_v).Float()
+		v = float64(bool2Int64(t))
 	case string:
-		return strconv.ParseFloat(_v.(string), 64)
+		v, err = strconv.ParseFloat(t, 64)
+	case int:
+		v = float64(t)
+	case int8:
+		v = float64(t)
+	case int16:
+		v = float64(t)
+	case int32:
+		v = float64(t)
+	case int64:
+		v = float64(t)
+	case uint:
+		v = float64(t)
+	case uint8:
+		v = float64(t)
+	case uint16:
+		v = float64(t)
+	case uint32:
+		v = float64(t)
+	case uint64:
+		v = float64(t)
+	case float32:
+		v = float64(t)
+	case float64:
+		v = t
+	case complex64:
+		v = float64(real(t))
+	case complex128:
+		v = real(t)
 	default:
 		err = fmt.Errorf("unknown type of %T", _v)
 	}
 	return
 }
 
-// ToString does the best to convert a certain value to string.
+// ToString does the best to convert any certain value to string.
+//
+// For time.Time, it will use time.RFC3339Nano to format it.
 func ToString(_v interface{}) (v string, err error) {
-	switch _v.(type) {
+	switch t := _v.(type) {
+	case nil:
 	case string:
-		v = _v.(string)
+		v = t
 	case []byte:
-		v = string(_v.([]byte))
-	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32,
-		uint64:
-		v = fmt.Sprintf("%d", _v)
-	case float32, float64:
-		v = fmt.Sprintf("%f", _v)
+		v = string(t)
+	case bool:
+		if t {
+			v = "true"
+		} else {
+			v = "false"
+		}
+	case int:
+		v = strconv.FormatInt(int64(t), 10)
+	case int8:
+		v = strconv.FormatInt(int64(t), 10)
+	case int16:
+		v = strconv.FormatInt(int64(t), 10)
+	case int32:
+		v = strconv.FormatInt(int64(t), 10)
+	case int64:
+		v = strconv.FormatInt(t, 10)
+	case uint:
+		v = strconv.FormatUint(uint64(t), 10)
+	case uint8:
+		v = strconv.FormatUint(uint64(t), 10)
+	case uint16:
+		v = strconv.FormatUint(uint64(t), 10)
+	case uint32:
+		v = strconv.FormatUint(uint64(t), 10)
+	case uint64:
+		v = strconv.FormatUint(t, 10)
+	case float32:
+		v = strconv.FormatFloat(float64(t), 'f', -1, 32)
+	case float64:
+		v = strconv.FormatFloat(t, 'f', -1, 64)
+	case error:
+		v = t.Error()
+	case time.Time:
+		v = t.Format(time.RFC3339Nano)
+	case fmt.Stringer:
+		v = t.String()
 	default:
 		err = fmt.Errorf("unknown type of %T", _v)
 	}
