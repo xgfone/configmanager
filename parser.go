@@ -161,15 +161,18 @@ func (f flagParser) Parse(c *Config) (err error) {
 	}
 
 	// Register the version option.
+	var _version *bool
 	name, version, help := c.GetVersion()
-	_version := flagSet.Bool(name, false, help)
+	if name != "" {
+		_version = flagSet.Bool(name, false, help)
+	}
 
 	// Parse the CLI arguments.
 	if err = flagSet.Parse(c.CliArgs()); err != nil {
 		return
 	}
 
-	if *_version {
+	if _version != nil && *_version {
 		fmt.Println(version)
 		os.Exit(0)
 	}
