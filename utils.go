@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func ToStringSlice(_v interface{}) (v []string, err error) {
 	case []string:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -79,7 +78,7 @@ func ToIntSlice(_v interface{}) (v []int, err error) {
 	case []int:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -106,7 +105,7 @@ func ToInt64Slice(_v interface{}) (v []int64, err error) {
 	case []int64:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -133,7 +132,7 @@ func ToUintSlice(_v interface{}) (v []uint, err error) {
 	case []uint:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -160,7 +159,7 @@ func ToUint64Slice(_v interface{}) (v []uint64, err error) {
 	case []uint64:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -187,7 +186,7 @@ func ToFloat64Slice(_v interface{}) (v []float64, err error) {
 	case []float64:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of %T", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -215,7 +214,7 @@ func ToTimes(layout string, _v interface{}) (v []time.Time, err error) {
 	case []time.Time:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of '%T'", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
@@ -243,7 +242,7 @@ func ToDurations(_v interface{}) (v []time.Duration, err error) {
 	case []time.Duration:
 		v = vv
 	default:
-		err = fmt.Errorf("unknown type of '%T'", _v)
+		err = types.ErrUnknownType
 	}
 	return
 }
