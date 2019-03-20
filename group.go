@@ -41,6 +41,8 @@ type OptGroup struct {
 	opts   map[string]option
 	values map[string]interface{}
 	fields map[string]reflect.Value
+	defers [][2]interface{}
+	ignore []string
 }
 
 // NewOptGroup returns a new OptGroup.
@@ -60,6 +62,8 @@ func NewOptGroup(name string, c *Config) *OptGroup {
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
 		fields: make(map[string]reflect.Value),
+		defers: make([][2]interface{}, 0, 16),
+		ignore: make([]string, 0, 4),
 	}
 }
 
@@ -94,24 +98,29 @@ func (g *OptGroup) CliOpts() map[string]Opt {
 	return opts
 }
 
-func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
+func (g *OptGroup) addIgnoredDeferOption(name string) {
+	g.ignore = append(g.ignore, name)
+}
+
+func (g *OptGroup) parseOptValue(name string, value interface{}) (interface{}, error) {
 	if value == nil {
-		return
+		return nil, nil
 	}
 
 	opt, ok := g.opts[name]
 	if !ok {
-		return fmt.Errorf("not the option '%s' in the group '%s'", name, g.name)
+		return nil, fmt.Errorf("not the option '%s' in the group '%s'", name, g.name)
 	}
 
+	var err error
 	if value, err = opt.opt.Parse(value); err != nil {
-		return
+		return nil, err
 	}
 
 	// The option has a validator.
 	if v, ok := opt.opt.(Validator); ok {
 		if err = v.Validate(g.name, name, value); err != nil {
-			return
+			return nil, err
 		}
 	}
 
@@ -121,12 +130,49 @@ func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
 		if len(vs) > 0 {
 			for _, v := range vs {
 				if err = v.Validate(g.name, name, value); err != nil {
-					return
+					return nil, err
 				}
 			}
 		}
 	}
 
+	return value, nil
+}
+
+func (g *OptGroup) _setOptValueDefer() {
+	var cache [][2]interface{}
+
+	func() {
+		g.lock.Lock()
+		defer g.lock.Unlock()
+
+		_len := len(g.defers)
+		cache = make([][2]interface{}, _len)
+		for i := _len - 1; i >= 0; i-- {
+			v := g.defers[i]
+			cache[_len-i-1] = v
+
+			name, value := v[0].(string), v[1]
+			g.values[name] = value
+			if field, ok := g.fields[name]; ok {
+				field.Set(reflect.ValueOf(value))
+			}
+		}
+
+		// Clear
+		g.defers = g.defers[:0]
+	}()
+
+	for _, v := range cache {
+		name, value := v[0].(string), v[1]
+		g.c.debug("Defer to set [%s:%s] to [%v]", g.name, name, value)
+		if g.c.watch != nil {
+			g.c.watch(g.name, name, value)
+		}
+	}
+}
+
+func (g *OptGroup) _setOptValue(name string, value interface{}) {
 	func() {
 		g.lock.Lock()
 		defer g.lock.Unlock()
@@ -137,9 +183,30 @@ func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
 		}
 	}()
 
-	g.c.debug("Set the option[%s] in the group[%s] to [%v]", name, g.name, value)
+	g.c.debug("Set [%s:%s] to [%v]", g.name, name, value)
 	if g.c.watch != nil {
 		g.c.watch(g.name, name, value)
+	}
+}
+
+func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
+	if value, err = g.parseOptValue(name, value); err == nil {
+		g._setOptValue(name, value)
+	}
+	return
+}
+
+func (g *OptGroup) deferSetOptValue(name string, value interface{}) (err error) {
+	for _, s := range g.ignore {
+		if s == name {
+			return g.setOptValue(name, value)
+		}
+	}
+
+	if value, err = g.parseOptValue(name, value); err == nil && !IsZero(value) {
+		g.lock.Lock()
+		g.defers = append(g.defers, [2]interface{}{name, value})
+		g.lock.Unlock()
 	}
 	return
 }

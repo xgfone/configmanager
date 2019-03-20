@@ -183,7 +183,7 @@ func (f flagParser) Parse(c *Config) (err error) {
 		gname := name2group[fg.Name]
 		optname := name2opt[fg.Name]
 		if gname != "" && optname != "" && fg.Name != name {
-			c.SetOptValue(gname, optname, fg.Value.String())
+			c.DeferSetOptValue(gname, optname, fg.Value.String())
 		}
 	})
 

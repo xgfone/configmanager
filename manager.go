@@ -159,6 +159,20 @@ func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) er
 	return fmt.Errorf("no group '%s'", groupName)
 }
 
+// DeferSetOptValue is the same as SetOptValue, but it will defer to
+// set the option value. For example, the CLI parser can call it to set
+// the option value after all the other parsers.
+//
+// Notice:
+//   1. It's not used after calling the method Parse().
+//   2. It will ignore the ZERO value.
+func (c *Config) DeferSetOptValue(groupName, optName string, optValue interface{}) (err error) {
+	if group := c.getGroupByName(groupName, false); group != nil {
+		return group.deferSetOptValue(optName, optValue)
+	}
+	return fmt.Errorf("no group '%s'", groupName)
+}
+
 // Parse parses the option, including CLI, the config file, or others.
 //
 // if the arguments is nil, it's equal to os.Args[1:].
@@ -199,6 +213,7 @@ func (c *Config) Parse(args ...string) (err error) {
 
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
+		group._setOptValueDefer()
 		if err = group.checkRequiredOption(); err != nil {
 			return err
 		}
@@ -396,6 +411,14 @@ func (c *Config) HasParser(name string) bool {
 		}
 	}
 	return false
+}
+
+// AddIgnoredDeferOption adds the ignored defer option.
+//
+// It will be ignored when deferring to set its value,
+// and set its value instead immediately.
+func (c *Config) AddIgnoredDeferOption(groupName, optName string) {
+	c.getGroupByName(groupName, true).addIgnoredDeferOption(optName)
 }
 
 // RegisterStruct registers the field name of the struct as options into the
