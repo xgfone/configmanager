@@ -5,7 +5,7 @@ The inspiration is from [oslo.config](https://github.com/openstack/oslo.config),
 
 The current version is `v9`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
-The supported Go version: `1.x`.
+The supported Go version: `1.9+`.
 
 
 ## Principle of Work

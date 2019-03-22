@@ -25,8 +25,7 @@ import (
 
 // Some converting function aliases.
 var (
-	IsZero = types.IsZero
-
+	IsZero    = types.IsZero
 	ToBool    = types.ToBool
 	ToInt64   = types.ToInt64
 	ToUint64  = types.ToUint64
