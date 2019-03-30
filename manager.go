@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package config is an extensible go configuration manager.
 //
-// The default parsers can parse the CLI arguments and the ini file. You can
+// The default parsers can parse the CLI and ENV arguments and the ini and property file. You can
 // implement and register your parser, and the configuration engine will call
 // the parser to parse the configuration.
 //
