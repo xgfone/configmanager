@@ -254,6 +254,10 @@ func main() {
 	fmt.Printf("DB5.DB3.MySQL.Conn: %s\n", config.Conf.Group("db").Group("db3.mysql").String("conn"))
 	fmt.Printf("DB5.DB3.MySQL.MaxConnNum: %d\n", config.Conf.Group("db.db3.mysql").Int("maxconn"))
 
+	// Print the group tree to debug.
+	fmt.Printf("\n------ Debug ------\n")
+	Conf.PrintGroupTree()
+
 	// Output:
 	// ------ Struct ------
 	// Addr: 0.0.0.0:80
@@ -294,5 +298,42 @@ func main() {
 	// DB5.DB2.MySQL.MaxConnNum: 3
 	// DB5.DB3.MySQL.Conn: user:pass@tcp(localhost:3306)/db5-3
 	// DB5.DB3.MySQL.MaxConnNum: 3
+	//
+	// ------ Debug ------
+	// |-->[DEFAULT]
+	// |   |--> addr
+	// |   |--> config-file
+	// |-->[log]
+	// |   |--> file
+	// |   |--> level
+	// |-->[db]
+	// |   |-->[db222]
+	// |   |   |-->[mysql]
+	// |   |   |   |--> conn
+	// |   |   |   |--> maxconn
+	// |   |-->[db3]
+	// |   |   |-->[mysql]
+	// |   |   |   |--> conn
+	// |   |   |   |--> maxconn
+	// |-->[db1]
+	// |   |-->[mysql]
+	// |   |   |--> conn
+	// |   |   |--> maxconn
+	// |-->[db02]
+	// |   |-->[mysql]
+	// |   |   |--> conn
+	// |   |   |--> maxconn
+	// |-->[db03]
+	// |   |-->[mysql]
+	// |   |   |--> conn
+	// |   |   |--> maxconn
+	// |-->[db004]
+	// |   |-->[mysql]
+	// |   |   |--> conn
+	// |   |   |--> maxconn
+	// |-->[db111]
+	// |   |-->[mysql]
+	// |   |   |--> conn
+	// |   |   |--> maxconn
 }
 ```
