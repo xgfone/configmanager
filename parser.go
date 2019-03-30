@@ -349,7 +349,7 @@ func (e envVarParser) Parse(c *Config) error {
 	for _, group := range c.Groups() {
 		gname := ""
 		if group.Name() != c.GetDefaultGroupName() {
-			gname = strings.ReplaceAll(group.FullName(), c.GetGroupSeparator(), "_") + "_"
+			gname = strings.Replace(group.FullName(), c.GetGroupSeparator(), "_", -1) + "_"
 		}
 		for _, opt := range group.AllOpts() {
 			e := fmt.Sprintf("%s%s%s", prefix, gname, opt.Name())
