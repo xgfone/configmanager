@@ -33,7 +33,5 @@ func NewDefault() *Config {
 	conf := NewConfig().SetCliParser(cli).AddParser(ini)
 	conf.AddIgnoredDeferOption("", IniParserOptName)
 
-	// opt := Str(IniParserOptName, "", "The path of the ini config file.")
-	// conf.RegisterCliOpt("", opt)
 	return conf
 }

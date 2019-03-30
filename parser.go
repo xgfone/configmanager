@@ -27,24 +27,12 @@ import (
 )
 
 // Parser is an parser interface.
-//
-// If the parser implementation needs to register some options into the config
-// manager, it should get the instance of the config manager then register them
-// when creating the parser instance, because the config manager does not allow
-// anyone to register the option.
-//
-//    conf := NewConfig().SetCliParser(NewCliParser())
-//    parser := NewXxxParser(conf)  // Register options into conf.
-//    conf.AddParser(parser)
-//    conf.Parse()
-//
-// Notice: the parser is used to parse and initialize the configurion options
-// when starting.
 type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
 
-	// Init initializes the parser before parsing the configuration.
+	// Init initializes the parser before parsing the configuration,
+	// such as registering the itself options.
 	Init(config *Config) error
 
 	// Parse the value of the registered options.
@@ -191,6 +179,12 @@ type iniParser struct {
 }
 
 // NewSimpleIniParser is equal to
+//
+//   NewIniParser(optName, func(c *Config) error {
+//       c.RegisterCliOpt("", Str(optName, "", "The path of the INI config file."))
+//       return nil
+//   })
+//
 func NewSimpleIniParser(optName string) Parser {
 	return NewIniParser(optName, func(c *Config) error {
 		c.RegisterCliOpt("", Str(optName, "", "The path of the INI config file."))
@@ -324,7 +318,7 @@ type envVarParser struct {
 // it's "OPTION". "GROUP" is the group name, and "OPTION" is the option name.
 //
 // Notice: the prefix, the group name and the option name will be converted to
-// the upper.
+// the upper, and the group separator will be converted to "_".
 func NewEnvVarParser(prefix string) Parser {
 	return envVarParser{prefix: prefix}
 }

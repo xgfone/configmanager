@@ -151,6 +151,8 @@ func (c *Config) IsDebug() bool {
 
 // SetGroupSeparator sets the separator between the group names.
 //
+// The default separator is a dot(.).
+//
 // If parsed, it will panic when calling it.
 func (c *Config) SetGroupSeparator(sep string) *Config {
 	if sep == "" {
@@ -166,40 +168,6 @@ func (c *Config) SetGroupSeparator(sep string) *Config {
 // GetGroupSeparator returns the group separator.
 func (c *Config) GetGroupSeparator() string {
 	return c.groupSep
-}
-
-// SetVersion sets the version information.
-//
-// If the CLI parser support the version function, it will print the version
-// and exit when giving the CLI option version.
-//
-// It supports:
-//     SetVersion(version)             // SetVersion("1.0.0")
-//     SetVersion(version, name)       // SetVersion("1.0.0", "version")
-//     SetVersion(version, name, help) // SetVersion("1.0.0", "version", "Print the version")
-func (c *Config) SetVersion(version string, args ...string) *Config {
-	name := "version"
-	help := "Print the version and exit."
-	if len(args) == 1 {
-		name = args[0]
-	} else if len(args) > 1 {
-		name = args[0]
-		help = args[1]
-	}
-
-	if name == "" || version == "" || help == "" {
-		panic(fmt.Errorf("The arguments about version must not be empty"))
-	}
-
-	c.vName = name
-	c.vHelp = help
-	c.vVersion = version
-	return c
-}
-
-// GetVersion returns the information about version.
-func (c *Config) GetVersion() (name, version, help string) {
-	return c.vName, c.vVersion, c.vHelp
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -290,6 +258,43 @@ func (c *Config) Parse(args ...string) (err error) {
 	return
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// Manage Parsers
+
+// SetVersion sets the version information.
+//
+// If the CLI parser support the version function, it will print the version
+// and exit when giving the CLI option version.
+//
+// It supports:
+//     SetVersion(version)             // SetVersion("1.0.0")
+//     SetVersion(version, name)       // SetVersion("1.0.0", "version")
+//     SetVersion(version, name, help) // SetVersion("1.0.0", "version", "Print the version")
+func (c *Config) SetVersion(version string, args ...string) *Config {
+	name := "version"
+	help := "Print the version and exit."
+	if len(args) == 1 {
+		name = args[0]
+	} else if len(args) > 1 {
+		name = args[0]
+		help = args[1]
+	}
+
+	if name == "" || version == "" || help == "" {
+		panic(fmt.Errorf("The arguments about version must not be empty"))
+	}
+
+	c.vName = name
+	c.vHelp = help
+	c.vVersion = version
+	return c
+}
+
+// GetVersion returns the information about version.
+func (c *Config) GetVersion() (name, version, help string) {
+	return c.vName, c.vVersion, c.vHelp
+}
+
 // CliArgs returns the parsed cil argments.
 //
 // If no cli parser, it will return nil.
@@ -314,9 +319,6 @@ func (c *Config) Args() []string {
 func (c *Config) SetArgs(args []string) {
 	c.args = args
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// Manage Parsers
 
 // SetCliParser resets the CLI parser.
 //
@@ -602,7 +604,7 @@ func (c *Config) Groups() []*OptGroup {
 
 // AllGroups returns all the groups.
 //
-// Notice: you should not modify the returned map result.
+// Notice: you should not modify the returned slice result.
 func (c *Config) AllGroups() []*OptGroup {
 	// c.panicIsParsed(false)
 	groups := make([]*OptGroup, 0, len(c.groups))
