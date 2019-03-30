@@ -77,20 +77,22 @@ var (
 type ValidatorError struct {
 	Group string
 	Name  string
+	Value interface{}
 	Err   error
 }
 
 // NewValidatorError returns a new ValidatorError.
-func NewValidatorError(group, name string, err error) ValidatorError {
-	return ValidatorError{Group: group, Name: name, Err: err}
+func NewValidatorError(group, name string, value interface{}, err error) ValidatorError {
+	return ValidatorError{Group: group, Name: name, Value: value, Err: err}
 }
 
 // NewValidatorErrorf returns a new ValidatorError.
-func NewValidatorErrorf(group, name,
+func NewValidatorErrorf(group, name string, value interface{},
 	format string, args ...interface{}) ValidatorError {
 	return ValidatorError{
 		Group: group,
 		Name:  name,
+		Value: value,
 		Err:   fmt.Errorf(format, args...),
 	}
 }
@@ -100,7 +102,7 @@ func (v ValidatorError) Error() string {
 	if v.Group == "" {
 		return fmt.Sprintf("%s: %v", v.Name, v.Err)
 	}
-	return fmt.Sprintf("%s|%s: %v", v.Group, v.Name, v.Err)
+	return fmt.Sprintf("[%s:%s]: %v", v.Group, v.Name, v.Err)
 }
 
 func toString(v interface{}) (string, error) {
@@ -173,7 +175,7 @@ func NewStrLenValidator(min, max int) Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 
 		_len := len(s)
@@ -192,11 +194,11 @@ func NewStrNotEmptyValidator() Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 
 		if len(s) == 0 {
-			return NewValidatorError(group, name, errStrEmtpy)
+			return NewValidatorError(group, name, v, errStrEmtpy)
 		}
 		return nil
 	})
@@ -208,7 +210,7 @@ func NewStrArrayValidator(array []string) Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		for _, v := range array {
 			if s == v {
@@ -227,11 +229,11 @@ func NewRegexpValidator(pattern string) Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 
 		if ok, err := regexp.MatchString(pattern, s); err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		} else if !ok {
 			return NewValidatorErrorf(group, name,
 				"'%s' doesn't match the value '%s'", s, pattern)
@@ -245,10 +247,10 @@ func NewURLValidator() Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if _, err = url.Parse(s); err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		return nil
 	})
@@ -259,10 +261,10 @@ func NewIPValidator() Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if net.ParseIP(s) == nil {
-			return NewValidatorErrorf(group, name, "the value is not a valid ip")
+			return NewValidatorErrorf(group, name, v, "the value is not a valid ip")
 		}
 		return nil
 	})
@@ -277,10 +279,10 @@ func NewIntegerRangeValidator(min, max int64) Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		i, err := toInt64(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if min > i || i > max {
-			return NewValidatorErrorf(group, name,
+			return NewValidatorErrorf(group, name, v,
 				"the value %d is not between %d and %d", i, min, max)
 		}
 		return nil
@@ -296,10 +298,10 @@ func NewFloatRangeValidator(min, max float64) Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		f, err := toFloat64(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if min > f || f > max {
-			return NewValidatorErrorf(group, name,
+			return NewValidatorErrorf(group, name, v,
 				"the value %f is not between %f and %f", f, min, max)
 		}
 		return nil
@@ -317,10 +319,10 @@ func NewEmailValidator() Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if _, err = mail.ParseAddress(s); err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		return nil
 	})
@@ -334,10 +336,10 @@ func NewAddressValidator() Validator {
 	return ValidatorFunc(func(group, name string, v interface{}) error {
 		s, err := toString(v)
 		if err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		if _, _, err = net.SplitHostPort(s); err != nil {
-			return NewValidatorError(group, name, err)
+			return NewValidatorError(group, name, v, err)
 		}
 		return nil
 	})
