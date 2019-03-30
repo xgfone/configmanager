@@ -41,7 +41,7 @@ func ExampleConfig_Observe() {
 func ExampleNewEnvVarParser() {
 	// Simulate the environment variable.
 	os.Setenv("TEST_VAR1", "abc")
-	os.Setenv("TEST_GROUP_VAR2", "123")
+	os.Setenv("TEST_GROUP1_GROUP2_VAR2", "123")
 
 	conf := NewConfig().AddParser(NewEnvVarParser("test"))
 
@@ -49,7 +49,7 @@ func ExampleNewEnvVarParser() {
 	opt2 := Int("var2", 0, "the environment var 2")
 
 	conf.RegisterOpt("", opt1)
-	conf.RegisterOpt("group", opt2)
+	conf.RegisterOpt("group1.group2", opt2)
 
 	if err := conf.Parse(); err != nil {
 		fmt.Println(err)
@@ -57,7 +57,7 @@ func ExampleNewEnvVarParser() {
 	}
 
 	fmt.Printf("var1=%s\n", conf.String("var1"))
-	fmt.Printf("var2=%d\n", conf.Group("group").Int("var2"))
+	fmt.Printf("var2=%d\n", conf.Group("group1.group2").Int("var2"))
 
 	// Output:
 	// var1=abc

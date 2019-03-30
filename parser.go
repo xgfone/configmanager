@@ -161,6 +161,7 @@ func (f flagParser) Parse(c *Config) (err error) {
 	// Acquire the result.
 	c.SetArgs(f.fset.Args())
 	f.fset.Visit(func(fg *flag.Flag) {
+		c.Printf("[%s] Parsing flag '%s'", f.Name(), fg.Name)
 		gname := name2group[fg.Name]
 		optname := name2opt[fg.Name]
 		if gname != "" && optname != "" && fg.Name != name {
@@ -231,7 +232,7 @@ func (p iniParser) Init(c *Config) error {
 
 func (p iniParser) Parse(c *Config) error {
 	// Read the content of the config file.
-	filename := c.Group("").StringD(p.optName, "")
+	filename := c.StringD(p.optName, "")
 	if filename == "" {
 		return nil
 	}
@@ -247,12 +248,14 @@ func (p iniParser) Parse(c *Config) error {
 		line := strings.TrimSpace(lines[index])
 		index++
 
+		c.Printf("[%s] Parsing %dth line: '%s'", p.Name(), index, line)
+
 		// Ignore the empty line.
 		if len(line) == 0 {
 			continue
 		}
 
-		// Ignore the line comments starting with "#" or "//".
+		// Ignore the line comments starting with "#", ";" or "//".
 		if (line[0] == '#') || (line[0] == ';') ||
 			(len(line) > 1 && line[0] == '/' && line[1] == '/') {
 			continue
@@ -269,13 +272,13 @@ func (p iniParser) Parse(c *Config) error {
 
 		n := strings.Index(line, p.sep)
 		if n == -1 {
-			return fmt.Errorf("the line misses the separator %s", p.sep)
+			return fmt.Errorf("the %dth line misses the separator '%s'", index, p.sep)
 		}
 
 		key := strings.TrimSpace(line[0:n])
 		for _, r := range key {
 			if r != '_' && r != '-' && !unicode.IsNumber(r) && !unicode.IsLetter(r) {
-				return fmt.Errorf("valid identifier key '%s'", key)
+				return fmt.Errorf("invalid identifier key '%s'", key)
 			}
 		}
 		value := strings.TrimSpace(line[n+len(p.sep) : len(line)])
@@ -287,6 +290,7 @@ func (p iniParser) Parse(c *Config) error {
 				value = strings.TrimSpace(lines[index])
 				vs = append(vs, strings.TrimSpace(strings.TrimRight(value, "\\")))
 				index++
+				c.Printf("[%s] Parsing %dth line: '%s'", p.Name(), index, value)
 				if value == "" || value[len(value)-1] != '\\' {
 					break
 				}
@@ -300,7 +304,9 @@ func (p iniParser) Parse(c *Config) error {
 			panic(fmt.Errorf("convert the key '%s' to ''", key))
 		}
 
-		c.SetOptValue(gname, key, value)
+		if err = c.SetOptValue(gname, key, value); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -331,7 +337,7 @@ func (e envVarParser) Init(c *Config) error {
 	return nil
 }
 
-func (e envVarParser) Parse(c *Config) error {
+func (e envVarParser) Parse(c *Config) (err error) {
 	// Initialize the prefix
 	prefix := e.prefix
 	if prefix != "" {
@@ -354,11 +360,127 @@ func (e envVarParser) Parse(c *Config) error {
 	// Get the option value from the environment variable.
 	envs := os.Environ()
 	for _, env := range envs {
+		c.Printf("[%s] Parsing Env '%s'", env)
 		items := strings.SplitN(env, "=", 2)
 		if len(items) == 2 {
 			if info, ok := env2opts[items[0]]; ok {
-				c.SetOptValue(info[0], info[1], items[1])
+				if err = c.SetOptValue(info[0], info[1], items[1]); err != nil {
+					return err
+				}
 			}
+		}
+	}
+
+	return nil
+}
+
+type propertyParser struct {
+	sep     string
+	optName string
+	init    func(*Config) error
+}
+
+// NewSimplePropertyParser is equal to
+//
+//   NewIniParser(optName, func(c *Config) error {
+//       c.RegisterCliOpt("", Str(optName, "", "The path of the property config file."))
+//       return nil
+//   })
+//
+func NewSimplePropertyParser(optName string) Parser {
+	return NewPropertyParser(optName, func(c *Config) error {
+		c.RegisterCliOpt("", Str(optName, "", "The path of the property config file."))
+		return nil
+	})
+}
+
+// NewPropertyParser returns a new property parser based on the file.
+//
+// The first argument is the option name which the parser needs. It will be
+// registered, and parsed before this parser runs.
+//
+// The second argument sets the Init function.
+//
+// The ini parser supports the line comments starting with "#", "//" or ";".
+// The key and the value is separated by an equal sign, that's =. The key must
+// be in one of ., :, _, -, number and letter. If giving fmtKey, it can convert
+// the key in the ini file to the new one.
+//
+// If the value ends with "\", it will continue the next line. The lines will
+// be joined by "\n" together.
+//
+// Notice: the options that have not been assigned to a certain group will be
+// divided into the default group.
+func NewPropertyParser(optName string, init func(*Config) error) Parser {
+	return propertyParser{optName: optName, sep: "=", init: init}
+}
+
+func (p propertyParser) Name() string {
+	return "property"
+}
+
+func (p propertyParser) Init(c *Config) error {
+	if p.init != nil {
+		return p.init(c)
+	}
+	return nil
+}
+
+func (p propertyParser) Parse(c *Config) error {
+	// Read the content of the config file.
+	filename := c.StringD(p.optName, "")
+	if filename == "" {
+		return nil
+	}
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	// Parse the config file.
+	lines := strings.Split(string(data), "\n")
+	for index, maxIndex := 0, len(lines); index < maxIndex; {
+		line := strings.TrimSpace(lines[index])
+		index++
+
+		c.Printf("[%s] Parsing %dth line: '%s'", p.Name(), index, line)
+
+		// Ignore the empty line.
+		if len(line) == 0 {
+			continue
+		}
+
+		// Ignore the line comments starting with "#", ";" or "//".
+		if (line[0] == '#') || (line[0] == ';') ||
+			(len(line) > 1 && line[0] == '/' && line[1] == '/') {
+			continue
+		}
+
+		ss := strings.SplitN(line, p.sep, 2)
+		if len(ss) != 2 {
+			return fmt.Errorf("the %dth line misses the separator '%s'", index, p.sep)
+		}
+
+		key := strings.TrimSpace(ss[0])
+		value := strings.TrimSpace(ss[1])
+		if value != "" {
+			for index < maxIndex && value[len(value)-1] == '\\' {
+				value = strings.TrimRight(value, "\\") + strings.TrimSpace(lines[index])
+				index++
+				c.Printf("[%s] Parsing %dth line: '%s'", p.Name(), index, lines[index])
+			}
+		}
+
+		ss = strings.Split(key, c.GetGroupSeparator())
+		switch _len := len(ss) - 1; _len {
+		case 0:
+			err = c.SetOptValue("", key, value)
+		default:
+			err = c.SetOptValue(strings.Join(ss[:_len], c.GetGroupSeparator()), ss[_len], value)
+		}
+
+		if err != nil {
+			return err
 		}
 	}
 

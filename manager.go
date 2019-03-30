@@ -90,6 +90,11 @@ func (c *Config) debug(format string, args ...interface{}) {
 	}
 }
 
+// Printf prints the message to os.Stdout if enabling debug.
+func (c *Config) Printf(format string, args ...interface{}) {
+	c.debug(format, args...)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// Manage Metadata
 

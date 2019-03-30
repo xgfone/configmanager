@@ -396,6 +396,10 @@ func (g *OptGroup) registerStructByValue(parent string, sv reflect.Value, cli bo
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
 func (g *OptGroup) registerOpt(cli bool, opt Opt) {
+	if opt == nil {
+		return
+	}
+
 	// g.conf.debug("+++Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 	if _, ok := g.opts[opt.Name()]; ok {
 		// panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
