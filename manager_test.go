@@ -209,7 +209,7 @@ func ExampleConfig_RegisterStruct() {
 	fmt.Printf("DB5.DB3.MySQL.Conn: %s\n", Conf.Group("db").Group("db3.mysql").String("conn"))
 	fmt.Printf("DB5.DB3.MySQL.MaxConnNum: %d\n", Conf.Group("db.db3.mysql").Int("maxconn"))
 
-	// Print the group tree to debug.
+	// Print the group tree for debug.
 	fmt.Printf("\n------ Debug ------\n")
 	Conf.PrintGroupTree()
 

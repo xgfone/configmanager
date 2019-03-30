@@ -405,10 +405,12 @@ func (g *OptGroup) registerOpt(cli bool, opt Opt) {
 		return
 	}
 
-	// g.conf.debug("+++Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 	if _, ok := g.opts[opt.Name()]; ok {
-		// panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
-		// 	opt.Name(), g.name))
+		if g.conf.isPanic {
+			panic(fmt.Errorf("the option '%s' has been registered into the group '%s'", opt.Name(), g.name))
+		}
+		g.conf.debug("WARNING: Ingore to reregister group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
+		return
 	}
 	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
 	g.conf.debug("Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)

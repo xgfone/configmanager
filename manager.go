@@ -51,6 +51,7 @@ type Config struct {
 
 	isRequired bool
 	isDebug    bool
+	isPanic    bool
 	isZero     bool
 
 	vName    string
@@ -77,6 +78,7 @@ type Config struct {
 func NewConfig() *Config {
 	conf := &Config{
 		isZero:     true,
+		isPanic:    true,
 		isRequired: true,
 		groupName:  DefaultGroupName,
 		groups:     make(map[string]*OptGroup, 2),
@@ -124,6 +126,16 @@ func (c *Config) GetDefaultGroupName() string {
 func (c *Config) SetRequired(required bool) *Config {
 	c.panicIsParsed(true)
 	c.isRequired = required
+	return c
+}
+
+// IgnoreReregister decides whether it will panic when reregistering an option
+// into a certain group.
+//
+// The default is not to ignore it, but you can set it to false to ignore it.
+func (c *Config) IgnoreReregister(ignore bool) *Config {
+	c.panicIsParsed(true)
+	c.isPanic = !ignore
 	return c
 }
 
