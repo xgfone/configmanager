@@ -30,10 +30,10 @@ var Conf = NewDefault()
 func NewDefault() *Config {
 	cli := NewDefaultFlagCliParser(true)
 	ini := NewSimpleIniParser(IniParserOptName)
-	conf := NewConfig(cli).AddParser(ini)
+	conf := NewConfig().SetCliParser(cli).AddParser(ini)
 	conf.AddIgnoredDeferOption("", IniParserOptName)
 
-	opt := Str(IniParserOptName, "", "The path of the ini config file.")
-	conf.RegisterCliOpt("", opt)
+	// opt := Str(IniParserOptName, "", "The path of the ini config file.")
+	// conf.RegisterCliOpt("", opt)
 	return conf
 }

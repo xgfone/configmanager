@@ -34,9 +34,10 @@ type option struct {
 
 // OptGroup is the group of the option.
 type OptGroup struct {
-	c    *Config
+	conf *Config
 	lock sync.RWMutex
 
+	fname  string
 	name   string
 	opts   map[string]option
 	values map[string]interface{}
@@ -46,19 +47,21 @@ type OptGroup struct {
 }
 
 // NewOptGroup returns a new OptGroup.
-func NewOptGroup(name string, c *Config) *OptGroup {
-	if name == "" {
-		panic(fmt.Errorf("the group is empty"))
+func newOptGroup(name, fullName string, conf *Config) *OptGroup {
+	if name == "" || fullName == "" {
+		panic(fmt.Errorf("the group name is empty"))
 	}
 
-	if c == nil {
+	if conf == nil {
 		panic(fmt.Errorf("Config is nil"))
 	}
 
 	return &OptGroup{
-		c:      c,
-		name:   name,
-		lock:   sync.RWMutex{},
+		conf:  conf,
+		name:  name,
+		fname: fullName,
+		lock:  sync.RWMutex{},
+
 		opts:   make(map[string]option, 8),
 		values: make(map[string]interface{}, 8),
 		fields: make(map[string]reflect.Value),
@@ -67,40 +70,71 @@ func NewOptGroup(name string, c *Config) *OptGroup {
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// MetaData
+
+// Name returns the name of the current group.
+func (g *OptGroup) Name() string {
+	return g.name
+}
+
+// FullName returns the full name of the current group.
+func (g *OptGroup) FullName() string {
+	return g.fname
+}
+
 // AllOpts returns all the registered options, including the CLI options.
-func (g *OptGroup) AllOpts() map[string]Opt {
-	opts := make(map[string]Opt, len(g.opts))
-	for name, opt := range g.opts {
-		opts[name] = opt.opt
+func (g *OptGroup) AllOpts() []Opt {
+	opts := make([]Opt, 0, len(g.opts))
+	for _, opt := range g.opts {
+		opts = append(opts, opt.opt)
 	}
 	return opts
 }
 
 // Opts returns all the registered options, except the CLI options.
-func (g *OptGroup) Opts() map[string]Opt {
-	opts := make(map[string]Opt, len(g.opts))
-	for name, opt := range g.opts {
+func (g *OptGroup) Opts() []Opt {
+	opts := make([]Opt, 0, len(g.opts))
+	for _, opt := range g.opts {
 		if !opt.isCli {
-			opts[name] = opt.opt
+			opts = append(opts, opt.opt)
 		}
 	}
 	return opts
 }
 
 // CliOpts returns all the registered CLI options, except the non-CLI options.
-func (g *OptGroup) CliOpts() map[string]Opt {
-	opts := make(map[string]Opt, len(g.opts))
-	for name, opt := range g.opts {
+func (g *OptGroup) CliOpts() []Opt {
+	opts := make([]Opt, 0, len(g.opts))
+	for _, opt := range g.opts {
 		if opt.isCli {
-			opts[name] = opt.opt
+			opts = append(opts, opt.opt)
 		}
 	}
 	return opts
 }
 
-func (g *OptGroup) addIgnoredDeferOption(name string) {
-	g.ignore = append(g.ignore, name)
+// HasOpt reports whether the group contains the option named 'name'.
+func (g *OptGroup) HasOpt(name string) bool {
+	_, ok := g.opts[name]
+	return ok
 }
+
+// HasGroup reports whether the group contains the sub-group named 'name'.
+func (g *OptGroup) HasGroup(name string) bool {
+	if name == "" {
+		return false
+	}
+	return g.conf.HasGroup(g.conf.mergeGroupName(g.name, name))
+}
+
+// Group returns the sub-group by the name.
+func (g *OptGroup) Group(name string) *OptGroup {
+	return g.conf.Group(g.conf.mergeGroupName(g.name, name))
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Set the option value.
 
 func (g *OptGroup) parseOptValue(name string, value interface{}) (interface{}, error) {
 	if value == nil {
@@ -109,7 +143,7 @@ func (g *OptGroup) parseOptValue(name string, value interface{}) (interface{}, e
 
 	opt, ok := g.opts[name]
 	if !ok {
-		return nil, fmt.Errorf("not the option '%s' in the group '%s'", name, g.name)
+		return nil, fmt.Errorf("no the option '%s' in the group '%s'", name, g.name)
 	}
 
 	var err error
@@ -139,7 +173,31 @@ func (g *OptGroup) parseOptValue(name string, value interface{}) (interface{}, e
 	return value, nil
 }
 
-func (g *OptGroup) _setOptValueDefer() {
+func (g *OptGroup) _setOptValue(name string, value interface{}) {
+	func() {
+		g.lock.Lock()
+		defer g.lock.Unlock()
+
+		g.values[name] = value
+		if field, ok := g.fields[name]; ok {
+			field.Set(reflect.ValueOf(value))
+		}
+	}()
+
+	g.conf.debug("Set [%s]:[%s] to [%v]", g.name, name, value)
+	if g.conf.watch != nil {
+		g.conf.watch(g.name, name, value)
+	}
+}
+
+func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
+	if value, err = g.parseOptValue(name, value); err == nil {
+		g._setOptValue(name, value)
+	}
+	return
+}
+
+func (g *OptGroup) _deferSetOptValue() {
 	var cache [][2]interface{}
 
 	func() {
@@ -165,35 +223,11 @@ func (g *OptGroup) _setOptValueDefer() {
 
 	for _, v := range cache {
 		name, value := v[0].(string), v[1]
-		g.c.debug("Defer to set [%s:%s] to [%v]", g.name, name, value)
-		if g.c.watch != nil {
-			g.c.watch(g.name, name, value)
+		g.conf.debug("Defer to set [%s]:[%s] to [%v]", g.name, name, value)
+		if g.conf.watch != nil {
+			g.conf.watch(g.name, name, value)
 		}
 	}
-}
-
-func (g *OptGroup) _setOptValue(name string, value interface{}) {
-	func() {
-		g.lock.Lock()
-		defer g.lock.Unlock()
-
-		g.values[name] = value
-		if field, ok := g.fields[name]; ok {
-			field.Set(reflect.ValueOf(value))
-		}
-	}()
-
-	g.c.debug("Set [%s:%s] to [%v]", g.name, name, value)
-	if g.c.watch != nil {
-		g.c.watch(g.name, name, value)
-	}
-}
-
-func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
-	if value, err = g.parseOptValue(name, value); err == nil {
-		g._setOptValue(name, value)
-	}
-	return
 }
 
 func (g *OptGroup) deferSetOptValue(name string, value interface{}) (err error) {
@@ -211,6 +245,10 @@ func (g *OptGroup) deferSetOptValue(name string, value interface{}) (err error) 
 	return
 }
 
+func (g *OptGroup) addIgnoredDeferOption(name string) {
+	g.ignore = append(g.ignore, name)
+}
+
 // Check whether the required option has no value or a ZORE value.
 func (g *OptGroup) checkRequiredOption() (err error) {
 	for name, opt := range g.opts {
@@ -222,7 +260,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 				continue
 			}
 
-			if g.c.isZero {
+			if g.conf.isZero {
 				if v := opt.opt.Zero(); v != nil {
 					if err = g.setOptValue(name, opt.opt.Zero()); err != nil {
 						return
@@ -231,7 +269,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 				}
 			}
 
-			if g.c.isRequired {
+			if g.conf.isRequired {
 				return fmt.Errorf("the option '%s' in the group '%s' has no value",
 					name, g.name)
 			}
@@ -239,6 +277,9 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 	}
 	return nil
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// Register Options
 
 func (g *OptGroup) registerStruct(s interface{}, cli bool) {
 	sv := reflect.ValueOf(s)
@@ -254,10 +295,10 @@ func (g *OptGroup) registerStruct(s interface{}, cli bool) {
 		panic(fmt.Errorf("the struct is not a struct"))
 	}
 
-	g.registerStructByValue(sv, cli)
+	g.registerStructByValue(g.name, sv, cli)
 }
 
-func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
+func (g *OptGroup) registerStructByValue(parent string, sv reflect.Value, cli bool) {
 	if sv.Kind() == reflect.Ptr {
 		sv = sv.Elem()
 	}
@@ -269,26 +310,17 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		field := st.Field(i)
 		fieldV := sv.Field(i)
 
-		// Get the name from the tag "name".
-		name := strings.ToLower(field.Name)
-		if _name := strings.TrimSpace(field.Tag.Get("name")); _name != "" {
-			if _name == "-" {
-				continue
-			}
-			name = _name
-		}
-
 		// Check whether the field can be set.
 		if !fieldV.CanSet() {
 			continue
 		}
 
-		// Get the group
-		group := g
-		gname := g.name
-		if name, ok := field.Tag.Lookup("group"); ok {
-			gname = g.c.getGroupName(strings.TrimSpace(name))
-			group = g.c.getGroupByName(gname, true)
+		name := strings.ToLower(field.Name)
+		tagname := strings.TrimSpace(field.Tag.Get("name"))
+		if tagname == "-" {
+			continue
+		} else if tagname != "" {
+			name = tagname
 		}
 
 		isCli := cli
@@ -303,14 +335,28 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 			}
 		}
 
+		gname := g.name
+		taggroup, resetgroup := field.Tag.Lookup("group")
+		if resetgroup {
+			taggroup = strings.TrimSpace(taggroup)
+			gname = taggroup
+		}
+
 		// Check whether the field is the struct.
 		if t := field.Type.Kind(); t == reflect.Struct {
 			if _, ok := fieldV.Interface().(time.Time); !ok {
-				if gname == g.name {
-					gname = name
-					group = g.c.getGroupByName(gname, true)
+				parentGroup := g.conf.mergeGroupName(parent, name)
+				if resetgroup {
+					if strings.Contains(taggroup, g.conf.groupSep) {
+						parentGroup = strings.Trim(taggroup, g.conf.groupSep)
+					} else if taggroup == "" {
+						parentGroup = g.conf.groupName // Default Group
+					} else {
+						parentGroup = g.conf.mergeGroupName(parent, taggroup)
+					}
 				}
-				group.registerStructByValue(fieldV, isCli)
+
+				g.conf.getGroupByName(parentGroup, true).registerStructByValue(parentGroup, fieldV, isCli)
 				continue
 			}
 		}
@@ -339,6 +385,7 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 		}
 
 		opt := newBaseOpt(short, name, _default, help, _type)
+		group := g.conf.getGroupByName(gname, true)
 		group.registerOpt(isCli, opt)
 		group.fields[name] = fieldV
 	}
@@ -349,13 +396,17 @@ func (g *OptGroup) registerStructByValue(sv reflect.Value, cli bool) {
 // The first argument, cli, indicates whether the option is as the CLI option,
 // too.
 func (g *OptGroup) registerOpt(cli bool, opt Opt) {
+	// g.conf.debug("+++Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 	if _, ok := g.opts[opt.Name()]; ok {
-		panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
-			opt.Name(), g.name))
+		// panic(fmt.Errorf("the option '%s' has been registered into the group '%s'",
+		// 	opt.Name(), g.name))
 	}
 	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
-	g.c.debug("Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
+	g.conf.debug("Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// Get the value from the current group.
 
 // Value returns the value of the option.
 //
@@ -435,6 +486,14 @@ func (g *OptGroup) getValue(name string, _type optType) (interface{}, error) {
 		if v, ok := opt.(float64); ok {
 			return v, nil
 		}
+	case durationType:
+		if v, ok := opt.(time.Duration); ok {
+			return v, nil
+		}
+	case timeType:
+		if v, ok := opt.(time.Time); ok {
+			return v, nil
+		}
 	case stringsType:
 		if v, ok := opt.([]string); ok {
 			return v, nil
@@ -457,6 +516,14 @@ func (g *OptGroup) getValue(name string, _type optType) (interface{}, error) {
 		}
 	case float64sType:
 		if v, ok := opt.([]float64); ok {
+			return v, nil
+		}
+	case durationsType:
+		if v, ok := opt.([]time.Duration); ok {
+			return v, nil
+		}
+	case timesType:
+		if v, ok := opt.([]time.Time); ok {
 			return v, nil
 		}
 	default:
@@ -860,6 +927,64 @@ func (g *OptGroup) Float64(name string) float64 {
 	return value
 }
 
+// DurationE returns the option value, the type of which is time.Duration.
+//
+// Return an error if no the option or the type of the option isn't time.Duration.
+func (g *OptGroup) DurationE(name string) (time.Duration, error) {
+	v, err := g.getValue(name, durationType)
+	if err != nil {
+		return 0, err
+	}
+	return v.(time.Duration), nil
+}
+
+// DurationD is the same as DurationE, but returns the default value if there is
+// an error.
+func (g *OptGroup) DurationD(name string, _default time.Duration) time.Duration {
+	if value, err := g.DurationE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Duration is the same as DurationE, but panic if there is an error.
+func (g *OptGroup) Duration(name string) time.Duration {
+	value, err := g.DurationE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// TimeE returns the option value, the type of which is time.Time.
+//
+// Return an error if no the option or the type of the option isn't time.Time.
+func (g *OptGroup) TimeE(name string) (time.Time, error) {
+	v, err := g.getValue(name, timeType)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return v.(time.Time), nil
+}
+
+// TimeD is the same as TimeE, but returns the default value if there is
+// an error.
+func (g *OptGroup) TimeD(name string, _default time.Time) time.Time {
+	if value, err := g.TimeE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Time is the same as TimeE, but panic if there is an error.
+func (g *OptGroup) Time(name string) time.Time {
+	value, err := g.TimeE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 // StringsE returns the option value, the type of which is []string.
 //
 // Return an error if no the option or the type of the option isn't []string.
@@ -1028,6 +1153,64 @@ func (g *OptGroup) Float64sD(name string, _default []float64) []float64 {
 // Float64s is the same as Float64sE, but panic if there is an error.
 func (g *OptGroup) Float64s(name string) []float64 {
 	value, err := g.Float64sE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// DurationsE returns the option value, the type of which is []time.Duration.
+//
+// Return an error if no the option or the type of the option isn't []time.Duration.
+func (g *OptGroup) DurationsE(name string) ([]time.Duration, error) {
+	v, err := g.getValue(name, durationsType)
+	if err != nil {
+		return nil, err
+	}
+	return v.([]time.Duration), nil
+}
+
+// DurationsD is the same as DurationsE, but returns the default value if there is
+// an error.
+func (g *OptGroup) DurationsD(name string, _default []time.Duration) []time.Duration {
+	if value, err := g.DurationsE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Durations is the same as DurationsE, but panic if there is an error.
+func (g *OptGroup) Durations(name string) []time.Duration {
+	value, err := g.DurationsE(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// TimesE returns the option value, the type of which is []time.Time.
+//
+// Return an error if no the option or the type of the option isn't []time.Time.
+func (g *OptGroup) TimesE(name string) ([]time.Time, error) {
+	v, err := g.getValue(name, timesType)
+	if err != nil {
+		return nil, err
+	}
+	return v.([]time.Time), nil
+}
+
+// TimesD is the same as TimesE, but returns the default value if there is
+// an error.
+func (g *OptGroup) TimesD(name string, _default []time.Time) []time.Time {
+	if value, err := g.TimesE(name); err == nil {
+		return value
+	}
+	return _default
+}
+
+// Times is the same as TimesE, but panic if there is an error.
+func (g *OptGroup) Times(name string) []time.Time {
+	value, err := g.TimesE(name)
 	if err != nil {
 		panic(err)
 	}

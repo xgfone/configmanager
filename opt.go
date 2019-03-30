@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// Opt stands for an opt value.
+// Opt stands for an option value.
 type Opt interface {
 	// Name returns the name of the option.
 	// It's necessary and must not be empty.
@@ -140,6 +140,8 @@ func getOptType(v reflect.Value) optType {
 	}
 
 	switch v.Interface().(type) {
+	case time.Duration:
+		return durationType
 	case time.Time:
 		return timeType
 	case []string:
@@ -400,8 +402,8 @@ func parseOpt(data interface{}, _type optType) (v interface{}, err error) {
 		switch arg := data.(type) {
 		case time.Time:
 			return arg, nil
-		case string:
-			return time.Parse(time.RFC3339Nano, arg)
+		case string, []byte:
+			return ToTime(arg)
 		default:
 			return nil, fmt.Errorf("don't support the type '%s' for time.Time", _type)
 		}
@@ -582,6 +584,8 @@ func Uint64sOpt(short, name string, _default []uint64, help string) ValidatorCha
 func Float64sOpt(short, name string, _default []float64, help string) ValidatorChainOpt {
 	return newBaseOpt(short, name, _default, help, float64sType)
 }
+
+///////////////////////////////////////////////////////////////////////////////
 
 // Bool is equal to BoolOpt("", name, _default, help).
 func Bool(name string, _default bool, help string) ValidatorChainOpt {

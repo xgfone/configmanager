@@ -31,6 +31,7 @@ var (
 	ToUint64  = types.ToUint64
 	ToFloat64 = types.ToFloat64
 	ToString  = types.ToString
+	ToTime    = types.ToTime
 )
 
 // ToStringSlice does the best to convert a certain value to []string.

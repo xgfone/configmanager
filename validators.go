@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/mail"
 	"net/url"
-	"reflect"
 	"regexp"
 )
 
@@ -119,11 +118,27 @@ func toInt64(v interface{}) (int64, error) {
 		return 0, errNil
 	}
 
-	switch v.(type) {
-	case int, int8, int16, int32, int64:
-		return reflect.ValueOf(v).Int(), nil
-	case uint, uint8, uint16, uint32, uint64:
-		return int64(reflect.ValueOf(v).Uint()), nil
+	switch _v := v.(type) {
+	case int:
+		return int64(_v), nil
+	case int8:
+		return int64(_v), nil
+	case int16:
+		return int64(_v), nil
+	case int32:
+		return int64(_v), nil
+	case int64:
+		return _v, nil
+	case uint:
+		return int64(_v), nil
+	case uint8:
+		return int64(_v), nil
+	case uint16:
+		return int64(_v), nil
+	case uint32:
+		return int64(_v), nil
+	case uint64:
+		return int64(_v), nil
 	default:
 		return 0, errIntType
 	}
@@ -134,9 +149,11 @@ func toFloat64(v interface{}) (float64, error) {
 		return 0, errNil
 	}
 
-	switch v.(type) {
-	case float32, float64:
-		return reflect.ValueOf(v).Float(), nil
+	switch _v := v.(type) {
+	case float32:
+		return float64(_v), nil
+	case float64:
+		return _v, nil
 	default:
 		return 0, errFloatType
 	}

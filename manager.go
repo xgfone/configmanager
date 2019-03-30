@@ -27,7 +27,9 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 )
 
 var (
@@ -45,48 +47,125 @@ type StructValidator interface {
 
 // Config is used to manage the configuration parsers.
 type Config struct {
+	parsed bool
+
 	isRequired bool
 	isDebug    bool
 	isZero     bool
 
 	vName    string
-	vVersion string
 	vHelp    string
+	vVersion string
 
-	defaultGroupName string
-
-	cli     Parser
+	cparser Parser
 	parsers []Parser
 	cliArgs []string
+	args    []string
 
-	args   []string
-	parsed bool
-	groups map[string]*OptGroup
-	watch  func(string, string, interface{})
+	groupSep    string
+	groupName   string // Default Group Name
+	groupPrefix string // The prefix of the default group name.
 
+	watch      func(string, string, interface{})
+	groups     map[string]*OptGroup
 	validators []func() error
 }
 
 // NewConfig returns a new Config.
 //
 // The name of the default group is DEFAULT.
-func NewConfig(cli ...Parser) *Config {
-	var _cli Parser
-	if len(cli) > 0 && cli[0] != nil {
-		_cli = cli[0]
+func NewConfig() *Config {
+	conf := &Config{
+		isZero:     true,
+		isRequired: true,
+		groupName:  DefaultGroupName,
+		groups:     make(map[string]*OptGroup, 2),
+	}
+	return conf.SetGroupSeparator(".")
+}
+
+func (c *Config) debug(format string, args ...interface{}) {
+	if c.isDebug {
+		fmt.Printf(format+"\n", args...)
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// Manage Metadata
+
+// SetDefaultGroupName resets the name of the default group.
+//
+// If you want to modify it, you must do it before registering any options.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetDefaultGroupName(name string) *Config {
+	c.panicIsParsed(true)
+	c.groupName = name
+	c.groupPrefix = c.groupName + c.groupSep
+	return c
+}
+
+// GetDefaultGroupName returns the name of the default group.
+func (c *Config) GetDefaultGroupName() string {
+	return c.groupName
+}
+
+// SetRequired asks that all the registered options have a value.
+//
+// Notice: the nil value is not considered that there is a value, but the ZERO
+// value is that.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetRequired(required bool) *Config {
+	c.panicIsParsed(true)
+	c.isRequired = required
+	return c
+}
+
+// SetZero sets the value of the option to the zero value of its type
+// if the option has no value.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetZero(zero bool) *Config {
+	c.panicIsParsed(true)
+	c.isZero = zero
+	return c
+}
+
+// SetDebug enables the debug model.
+//
+// If setting, when registering the option, it'll output the verbose information.
+// You should set it before registering the option.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetDebug(debug bool) *Config {
+	c.panicIsParsed(true)
+	c.isDebug = debug
+	return c
+}
+
+// IsDebug returns whether the config manager is on the debug mode.
+func (c *Config) IsDebug() bool {
+	return c.isDebug
+}
+
+// SetGroupSeparator sets the separator between the group names.
+//
+// If parsed, it will panic when calling it.
+func (c *Config) SetGroupSeparator(sep string) *Config {
+	if sep == "" {
+		panic(fmt.Errorf("the separator is empty"))
 	}
 
-	return &Config{
-		isZero:           true,
-		isRequired:       true,
-		defaultGroupName: DefaultGroupName,
+	c.panicIsParsed(true)
+	c.groupSep = sep
+	c.groupPrefix = c.groupName + c.groupSep
+	return c
+}
 
-		cli:     _cli,
-		parsers: make([]Parser, 0, 2),
-		groups:  make(map[string]*OptGroup, 2),
-
-		validators: make([]func() error, 0),
-	}
+// GetGroupSeparator returns the group separator.
+func (c *Config) GetGroupSeparator() string {
+	return c.groupSep
 }
 
 // SetVersion sets the version information.
@@ -98,7 +177,7 @@ func NewConfig(cli ...Parser) *Config {
 //     SetVersion(version)             // SetVersion("1.0.0")
 //     SetVersion(version, name)       // SetVersion("1.0.0", "version")
 //     SetVersion(version, name, help) // SetVersion("1.0.0", "version", "Print the version")
-func (c *Config) SetVersion(version string, args ...string) {
+func (c *Config) SetVersion(version string, args ...string) *Config {
 	name := "version"
 	help := "Print the version and exit."
 	if len(args) == 1 {
@@ -113,8 +192,9 @@ func (c *Config) SetVersion(version string, args ...string) {
 	}
 
 	c.vName = name
-	c.vVersion = version
 	c.vHelp = help
+	c.vVersion = version
+	return c
 }
 
 // GetVersion returns the information about version.
@@ -122,55 +202,21 @@ func (c *Config) GetVersion() (name, version, help string) {
 	return c.vName, c.vVersion, c.vHelp
 }
 
-// ResetCLIParser resets the CLI parser.
-//
-// If nil, it will disable the CLI parser. Also, it must be called
-// before calling c.Parse().
-func (c *Config) ResetCLIParser(cli Parser) *Config {
-	c.checkIsParsed(true)
-	c.cli = cli
-	return c
-}
+//////////////////////////////////////////////////////////////////////////////
+/// Start To Parse
 
-// CliArgs returns the parsed cil argments.
-func (c *Config) CliArgs() []string {
-	return c.cliArgs
-}
-
-// Watch watches the change of values.
-//
-// When the option value is changed, the function f will be called.
-//
-// If SetOptValue() is used in the multi-thread, you should promise
-// that the callback function f is thread-safe and reenterable.
-func (c *Config) Watch(f func(groupName string, optName string, optValue interface{})) {
-	c.checkIsParsed(true)
-	c.watch = f
-}
-
-// SetOptValue sets the value of the option in the group. It's thread-safe.
-//
-// Notice: You cannot call SetOptValue() for the struct option, because we have
-// no way to promise that it's thread-safe.
-func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
-	if group := c.getGroupByName(groupName, false); group != nil {
-		return group.setOptValue(optName, optValue)
+func (c *Config) panicIsParsed(p bool) {
+	if p && c.parsed {
+		panic(ErrParsed)
 	}
-	return fmt.Errorf("no group '%s'", groupName)
+	if !p && !c.parsed {
+		panic(ErrNotParsed)
+	}
 }
 
-// DeferSetOptValue is the same as SetOptValue, but it will defer to
-// set the option value. For example, the CLI parser can call it to set
-// the option value after all the other parsers.
-//
-// Notice:
-//   1. It's not used after calling the method Parse().
-//   2. It will ignore the ZERO value.
-func (c *Config) DeferSetOptValue(groupName, optName string, optValue interface{}) (err error) {
-	if group := c.getGroupByName(groupName, false); group != nil {
-		return group.deferSetOptValue(optName, optValue)
-	}
-	return fmt.Errorf("no group '%s'", groupName)
+// Parsed returns true if has been parsed, or false.
+func (c *Config) Parsed() bool {
+	return c.parsed
 }
 
 // Parse parses the option, including CLI, the config file, or others.
@@ -182,38 +228,54 @@ func (c *Config) DeferSetOptValue(groupName, optName string, optValue interface{
 //
 // If parsed, it will panic when calling it.
 func (c *Config) Parse(args ...string) (err error) {
-	c.checkIsParsed(true)
-	c.parsed = true
+	c.panicIsParsed(true)
 
 	// Ensure that the default group exists.
-	c.getGroupByName(c.defaultGroupName, true)
+	c.getGroupByName(c.groupName, true)
 
 	// Parse the CLI arguments
-	if c.cli != nil {
+	if c.cparser != nil {
 		if args == nil {
 			c.cliArgs = os.Args[1:]
 		} else {
 			c.cliArgs = args
 		}
+		c.debug("Initializing CLI parser '%s'", c.cparser.Name())
+		if err = c.cparser.Init(c); err != nil {
+			return err
+		}
+	} else {
+		c.debug("Warning: no CLI parser")
+	}
 
-		// Parse the CLI arguments.
-		if err = c.cli.Parse(c); err != nil {
+	for _, parser := range c.parsers {
+		c.debug("Initializing the parser '%s'", parser.Name())
+		if err = parser.Init(c); err != nil {
+			return err
+		}
+	}
+
+	c.parsed = true
+
+	// Parse the CLI arguments.
+	if c.cparser != nil {
+		c.debug("Calling CLI parser '%s'", c.cparser.Name())
+		if err = c.cparser.Parse(c); err != nil {
 			return fmt.Errorf("The CLI parser failed: %s", err)
 		}
-	} else if c.isDebug {
-		fmt.Println("Warning: no CLI parser")
 	}
 
 	// Parse the other options by other parsers.
 	for _, parser := range c.parsers {
+		c.debug("Calling the parser '%s'", parser.Name())
 		if err = parser.Parse(c); err != nil {
-			return fmt.Errorf("The %s parser failed: %s", parser.Name(), err)
+			return fmt.Errorf("The '%s' parser failed: %s", parser.Name(), err)
 		}
 	}
 
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
-		group._setOptValueDefer()
+		group._deferSetOptValue()
 		if err = group.checkRequiredOption(); err != nil {
 			return err
 		}
@@ -228,112 +290,11 @@ func (c *Config) Parse(args ...string) (err error) {
 	return
 }
 
-// SetArgs sets the cli rest arguments.
-func (c *Config) SetArgs(args []string) {
-	c.args = args
-}
-
-// Audit outputs the internal information to find out the troube.
+// CliArgs returns the parsed cil argments.
 //
-// If not parsed, it will panic when calling it.
-func (c *Config) Audit() {
-	c.checkIsParsed(false)
-
-	fmt.Printf("%s:\n", filepath.Base(os.Args[0]))
-	fmt.Printf("    Args: %v\n", c.args)
-	fmt.Printf("    DefaultGroup: %s\n", c.defaultGroupName)
-	if c.cli != nil {
-		fmt.Printf("    Cli Parser: %s\n", c.cli.Name())
-	} else {
-		fmt.Printf("    Cli Parser: nil\n")
-	}
-
-	// Parsers
-	fmt.Printf("    Parsers:")
-	for _, parser := range c.parsers {
-		fmt.Printf(" %s", parser.Name())
-	}
-	fmt.Printf("\n")
-
-	// Group
-	fmt.Printf("    Group:\n")
-	for gname, group := range c.groups {
-		fmt.Printf("        %s:\n", gname)
-
-		fmt.Printf("            Opts:")
-		for name, opt := range group.opts {
-			if opt.isCli {
-				fmt.Printf(" %s[CLI]", name)
-			} else {
-				fmt.Printf(" %s", name)
-			}
-		}
-		fmt.Printf("\n")
-
-		fmt.Printf("            Values:\n")
-		for name, value := range group.values {
-			fmt.Printf("                %s=%s\n", name, value)
-		}
-	}
-
-	fmt.Println()
-}
-
-func (c *Config) debug(format string, args ...interface{}) {
-	if c.isDebug {
-		fmt.Printf(format+"\n", args...)
-	}
-}
-
-// SetDebug enables the debug model.
-//
-// If setting, when registering the option, it'll output the verbose information.
-// You should set it before registering the option.
-//
-// If parsed, it will panic when calling it.
-func (c *Config) SetDebug() {
-	c.checkIsParsed(true)
-	c.isDebug = true
-}
-
-// IsDebug returns whether the config manager is on the debug mode.
-func (c *Config) IsDebug() bool {
-	return c.isDebug
-}
-
-// SetRequired asks that all the registered options have a value.
-//
-// Notice: the nil value is not considered that there is a value, but the ZERO
-// value is that.
-//
-// If parsed, it will panic when calling it.
-func (c *Config) SetRequired(required bool) {
-	c.checkIsParsed(true)
-	c.isRequired = required
-}
-
-// SetZero sets the value of the option to the zero value of its type
-// if the option has no value.
-//
-// If parsed, it will panic when calling it.
-func (c *Config) SetZero(zero bool) {
-	c.checkIsParsed(true)
-	c.isZero = zero
-}
-
-// SetDefaultGroupName resets the name of the default group.
-//
-// If you want to modify it, you must do it before registering any options.
-//
-// If parsed, it will panic when calling it.
-func (c *Config) SetDefaultGroupName(name string) {
-	c.checkIsParsed(true)
-	c.defaultGroupName = name
-}
-
-// GetDefaultGroupName returns the name of the default group.
-func (c *Config) GetDefaultGroupName() string {
-	return c.defaultGroupName
+// If no cli parser, it will return nil.
+func (c *Config) CliArgs() []string {
+	return c.cliArgs
 }
 
 // Args returns the rest of the CLI arguments, which are not the options
@@ -343,22 +304,28 @@ func (c *Config) GetDefaultGroupName() string {
 //
 // If not parsed, it will panic when calling it.
 func (c *Config) Args() []string {
-	c.checkIsParsed(false)
+	c.panicIsParsed(false)
 	return c.args
 }
 
-func (c *Config) checkIsParsed(p bool) {
-	if p && c.parsed {
-		panic(ErrParsed)
-	}
-	if !p && !c.parsed {
-		panic(ErrNotParsed)
-	}
+// SetArgs sets the cli rest arguments.
+//
+// Notice: it will be called by the cli parser when parsing cli arguments.
+func (c *Config) SetArgs(args []string) {
+	c.args = args
 }
 
-// Parsed returns true if has been parsed, or false.
-func (c *Config) Parsed() bool {
-	return c.parsed
+//////////////////////////////////////////////////////////////////////////////
+/// Manage Parsers
+
+// SetCliParser resets the CLI parser.
+//
+// If nil, it will disable the CLI parser. Also, it must be called
+// before calling c.Parse().
+func (c *Config) SetCliParser(cli Parser) *Config {
+	c.panicIsParsed(true)
+	c.cparser = cli
+	return c
 }
 
 // AddParser adds a named parser.
@@ -367,12 +334,10 @@ func (c *Config) Parsed() bool {
 // by the next parser can be acquired from the results parsed by the previous
 // parser.
 //
-// Notice: The parser having the same name has only been registered once. Or it
-// will panic..
-//
-// If parsed, it will panic when calling it.
+// Notice: The parser having the same name has only been registered once.
+// Or it will panic. And it will also panic when calling it if parsed.
 func (c *Config) AddParser(parser Parser) *Config {
-	c.checkIsParsed(true)
+	c.panicIsParsed(true)
 
 	name := parser.Name()
 	for _, p := range c.parsers {
@@ -389,7 +354,7 @@ func (c *Config) AddParser(parser Parser) *Config {
 //
 // Return nil if the parser does not exist.
 func (c *Config) RemoveParser(name string) Parser {
-	c.checkIsParsed(true)
+	c.panicIsParsed(true)
 	for i, p := range c.parsers {
 		if p.Name() == name {
 			ps := make([]Parser, 0, len(c.parsers)-1)
@@ -399,7 +364,6 @@ func (c *Config) RemoveParser(name string) Parser {
 			return p
 		}
 	}
-
 	return nil
 }
 
@@ -413,13 +377,8 @@ func (c *Config) HasParser(name string) bool {
 	return false
 }
 
-// AddIgnoredDeferOption adds the ignored defer option.
-//
-// It will be ignored when deferring to set its value,
-// and set its value instead immediately.
-func (c *Config) AddIgnoredDeferOption(groupName, optName string) {
-	c.getGroupByName(groupName, true).addIgnoredDeferOption(optName)
-}
+///////////////////////////////////////////////////////////////////////////////
+/// Register Options
 
 // RegisterStruct registers the field name of the struct as options into the
 // group "group".
@@ -454,7 +413,8 @@ func (c *Config) AddIgnoredDeferOption(groupName, optName string) {
 //
 // NOTICE: ALL THE TAGS ARE OPTIONAL.
 //
-// Notice: For the struct option, you cannot call SetOptValue().
+// Notice: For the struct option, you shouldn't call SetOptValue()
+// because of concurrence.
 func (c *Config) RegisterStruct(group string, s interface{}) {
 	c.registerStruct(group, s, false)
 }
@@ -466,8 +426,8 @@ func (c *Config) RegisterCliStruct(group string, s interface{}) {
 }
 
 func (c *Config) registerStruct(group string, s interface{}, cli bool) {
-	c.checkIsParsed(true)
-	c.getGroupByName(group, true).registerStruct(s, cli)
+	c.panicIsParsed(true)
+	c.getGroupByName(strings.Trim(group, c.groupSep), true).registerStruct(s, cli)
 	if v, ok := s.(StructValidator); ok {
 		c.validators = append(c.validators, v.Validate)
 	}
@@ -532,39 +492,174 @@ func (c *Config) RegisterOpts(group string, opts []Opt) {
 //
 // If parsed, it will panic when calling it.
 func (c *Config) registerOpt(group string, cli bool, opt Opt) {
-	c.checkIsParsed(true)
+	c.panicIsParsed(true)
 	c.getGroupByName(group, true).registerOpt(cli, opt)
 }
 
-// Groups returns all the groups, the key of which is the group name.
+//////////////////////////////////////////////////////////////////////////////
+/// Set and Observe the option value
+
+// Observe watches the change of values.
 //
-// If not parsed, it will panic when calling it.
+// When the option value is changed, the function f will be called.
+//
+// If SetOptValue() is used in the multi-thread, you should promise
+// that the callback function f is thread-safe and reenterable.
+func (c *Config) Observe(f func(groupName string, optName string, optValue interface{})) {
+	c.panicIsParsed(true)
+	c.watch = f
+}
+
+// SetOptValue sets the value of the option in the group. It's thread-safe.
+//
+// Notice: You cannot call SetOptValue() for the struct option, because we have
+// no way to promise that it's thread-safe.
+func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
+	if group := c.getGroupByName(groupName, false); group != nil {
+		return group.setOptValue(optName, optValue)
+	}
+	return fmt.Errorf("no group '%s'", groupName)
+}
+
+// DeferSetOptValue is the same as SetOptValue, but it will defer to
+// set the option value. For example, the CLI parser can call it to set
+// the option value after all the other parsers.
+//
+// Notice: it will ignore the ZERO value and shouldn't be called to set the option
+// dynamically when the program is running.
+func (c *Config) DeferSetOptValue(groupName, optName string, optValue interface{}) (err error) {
+	if group := c.getGroupByName(groupName, false); group != nil {
+		return group.deferSetOptValue(optName, optValue)
+	}
+	return fmt.Errorf("no group '%s'", groupName)
+}
+
+// AddIgnoredDeferOption adds the ignored defer option.
+//
+// It will be ignored when deferring to set its value,
+// and set its value instead immediately.
+func (c *Config) AddIgnoredDeferOption(groupName, optName string) {
+	c.panicIsParsed(true)
+	c.getGroupByName(groupName, true).addIgnoredDeferOption(optName)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Manage Group
+
+// PrintGroupTree prints the tree of the groups to os.Stdout.
+//
+// Notice: it is only used to debug.
+func (c *Config) PrintGroupTree() {
+	var gnames []string
+	for _, g := range c.Groups() {
+		gnames = append(gnames, g.Name())
+	}
+	sort.Strings(gnames)
+
+	tree := make(map[string]interface{}, 8)
+	for _, gname := range gnames {
+		parent := tree
+		for _, name := range strings.Split(gname, c.groupSep) {
+			if v, ok := parent[name]; ok {
+				parent = v.(map[string]interface{})
+			} else {
+				m := make(map[string]interface{})
+				parent[name] = m
+				parent = m
+			}
+		}
+	}
+
+	c.printMap("", tree, "")
+}
+
+func (c *Config) printMap(parent string, ms map[string]interface{}, indent string) {
+	group := c.Group(parent)
+	for gname, m := range ms {
+		fmt.Printf("|%s-->[%s]\n", indent, gname)
+		for _, opt := range group.Group(gname).AllOpts() {
+			fmt.Printf("|%s   |--> %s\n", indent, opt.Name())
+		}
+
+		if _ms, ok := m.(map[string]interface{}); ok && len(_ms) > 0 {
+			c.printMap(c.mergeGroupName(parent, gname), _ms, indent+"   |")
+		}
+	}
+}
+
+// Groups is the same as AllGroups, except those groups that have no options,
+// which are the assistant groups.
+func (c *Config) Groups() []*OptGroup {
+	// c.panicIsParsed(false)
+	groups := make([]*OptGroup, 0, len(c.groups))
+	for _, group := range c.groups {
+		if len(group.opts) > 0 {
+			groups = append(groups, group)
+		}
+	}
+	return groups
+}
+
+// AllGroups returns all the groups.
 //
 // Notice: you should not modify the returned map result.
-func (c *Config) Groups() map[string]*OptGroup {
-	c.checkIsParsed(false)
-	m := make(map[string]*OptGroup, len(c.groups))
-	for gname, group := range c.groups {
-		m[gname] = group
+func (c *Config) AllGroups() []*OptGroup {
+	// c.panicIsParsed(false)
+	groups := make([]*OptGroup, 0, len(c.groups))
+	for _, group := range c.groups {
+		groups = append(groups, group)
 	}
-	return m
+	return groups
+}
+
+func (c *Config) mergeGroupName(parent, name string) string {
+	parent = strings.TrimPrefix(parent, c.groupPrefix)
+	if parent == "" {
+		return name
+	}
+	return parent + "." + name
 }
 
 func (c *Config) getGroupName(name string) string {
 	if name == "" {
-		return c.defaultGroupName
+		return c.groupName
 	}
 	return name
 }
 
-func (c *Config) getGroupByName(name string, new bool) *OptGroup {
-	name = c.getGroupName(name)
-	g, ok := c.groups[name]
-	if !ok && new {
-		g = NewOptGroup(name, c)
-		c.groups[name] = g
+func (c *Config) newOptGroup(name, fullName string) *OptGroup {
+	group := c.groups[name]
+	if group == nil {
+		group = newOptGroup(name, fullName, c)
+		c.groups[name] = group
+		c.debug("Creating group '%s'", name)
 	}
-	return g
+	return group
+}
+
+func (c *Config) getGroupByName(name string, new bool) *OptGroup {
+	name = strings.TrimPrefix(name, c.groupPrefix)
+
+	if !new {
+		return c.groups[c.getGroupName(name)]
+	} else if name == "" {
+		return c.newOptGroup(c.groupName, c.groupName)
+	}
+
+	groups := strings.Split(name, c.groupSep)
+	for i, gname := range groups {
+		fullName := strings.Join(groups[:i+1], c.groupSep)
+		c.newOptGroup(fullName, fullName)
+		c.newOptGroup(gname, fullName)
+	}
+
+	return c.groups[name]
+}
+
+// HasGroup reports whether there is the group named 'group'.
+func (c *Config) HasGroup(group string) bool {
+	// c.panicIsParsed(false)
+	return c.getGroupByName(group, false) != nil
 }
 
 // Group returns the OptGroup named group.
@@ -572,12 +667,9 @@ func (c *Config) getGroupByName(name string, new bool) *OptGroup {
 // Return the default group if the group name is "".
 //
 // The group must exist, or panic.
-//
-// If not parsed, it will panic when calling it.
 func (c *Config) Group(group string) *OptGroup {
-	c.checkIsParsed(false)
-	group = c.getGroupName(group)
-	if g, ok := c.groups[group]; ok {
+	// c.panicIsParsed(false)
+	if g := c.getGroupByName(group, false); g != nil {
 		return g
 	}
 	panic(fmt.Errorf("have no group '%s'", group))
@@ -587,6 +679,9 @@ func (c *Config) Group(group string) *OptGroup {
 func (c *Config) G(group string) *OptGroup {
 	return c.Group(group)
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// Get the value from the group.
 
 // Value is equal to c.Group("").Value(name).
 func (c *Config) Value(name string) interface{} {
@@ -808,6 +903,36 @@ func (c *Config) Float64(name string) float64 {
 	return c.Group("").Float64(name)
 }
 
+// DurationE is equal to c.Group("").DurationE(name).
+func (c *Config) DurationE(name string) (time.Duration, error) {
+	return c.Group("").DurationE(name)
+}
+
+// DurationD is equal to c.Group("").DurationD(name, _default).
+func (c *Config) DurationD(name string, _default time.Duration) time.Duration {
+	return c.Group("").DurationD(name, _default)
+}
+
+// Duration is equal to c.Group("").Duration(name).
+func (c *Config) Duration(name string) time.Duration {
+	return c.Group("").Duration(name)
+}
+
+// TimeE is equal to c.Group("").DTimeE(name).
+func (c *Config) TimeE(name string) (time.Time, error) {
+	return c.Group("").TimeE(name)
+}
+
+// TimeD is equal to c.Group("").TimeD(name, _default).
+func (c *Config) TimeD(name string, _default time.Time) time.Time {
+	return c.Group("").TimeD(name, _default)
+}
+
+// Time is equal to c.Group("").Time(name).
+func (c *Config) Time(name string) time.Time {
+	return c.Group("").Time(name)
+}
+
 // StringsE is equal to c.Group("").StringsE(name).
 func (c *Config) StringsE(name string) ([]string, error) {
 	return c.Group("").StringsE(name)
@@ -896,4 +1021,34 @@ func (c *Config) Float64sD(name string, _default []float64) []float64 {
 // Float64s is equal to c.Group("").Float64s(name).
 func (c *Config) Float64s(name string) []float64 {
 	return c.Group("").Float64s(name)
+}
+
+// DurationsE is equal to c.Group("").DurationsE(name).
+func (c *Config) DurationsE(name string) ([]time.Duration, error) {
+	return c.Group("").DurationsE(name)
+}
+
+// DurationsD is equal to c.Group("").DurationsD(name, _default).
+func (c *Config) DurationsD(name string, _default []time.Duration) []time.Duration {
+	return c.Group("").DurationsD(name, _default)
+}
+
+// Durations is equal to c.Group("").Durations(name).
+func (c *Config) Durations(name string) []time.Duration {
+	return c.Group("").Durations(name)
+}
+
+// TimesE is equal to c.Group("").DTimesE(name).
+func (c *Config) TimesE(name string) ([]time.Time, error) {
+	return c.Group("").TimesE(name)
+}
+
+// TimesD is equal to c.Group("").TimesD(name, _default).
+func (c *Config) TimesD(name string, _default []time.Time) []time.Time {
+	return c.Group("").TimesD(name, _default)
+}
+
+// Times is equal to c.Group("").Times(name).
+func (c *Config) Times(name string) []time.Time {
+	return c.Group("").Times(name)
 }

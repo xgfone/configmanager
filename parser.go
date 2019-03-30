@@ -33,13 +33,19 @@ import (
 // when creating the parser instance, because the config manager does not allow
 // anyone to register the option.
 //
-//    conf := NewConfig(cliParser)
-//    parser := NewXxxParser(conf) // Register the options into conf.
+//    conf := NewConfig().SetCliParser(NewCliParser())
+//    parser := NewXxxParser(conf)  // Register options into conf.
 //    conf.AddParser(parser)
-//    conf.Parse(nil)
+//    conf.Parse()
+//
+// Notice: the parser is used to parse and initialize the configurion options
+// when starting.
 type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
+
+	// Init initializes the parser before parsing the configuration.
+	Init(config *Config) error
 
 	// Parse the value of the registered options.
 	//
@@ -68,11 +74,8 @@ type Parser interface {
 }
 
 type flagParser struct {
-	flagSet    *flag.FlagSet
-	name       string
-	errhandler flag.ErrorHandling
-
-	underlineToHyphen bool
+	fset *flag.FlagSet
+	utoh bool
 }
 
 // NewDefaultFlagCliParser returns a new CLI parser based on flag,
@@ -82,38 +85,28 @@ func NewDefaultFlagCliParser(underlineToHyphen ...bool) Parser {
 	if len(underlineToHyphen) > 0 {
 		u2h = underlineToHyphen[0]
 	}
-	return NewFlagCliParser("", 0, u2h, flag.CommandLine)
+	return NewFlagCliParser(flag.CommandLine, u2h)
 }
 
 // NewFlagCliParser returns a new CLI parser based on flag.FlagSet.
 //
-// The arguments is the same as that of flag.NewFlagSet(), but if the name is
-// "", it will be filepath.Base(os.Args[0]).
+// If flagSet is nil, it will create a default flag.FlagSet, which is equal to
+//
+//    flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ContinueOnError)
 //
 // If underlineToHyphen is true, it will convert the underline to the hyphen.
-// If giving flagSet, errhandler will be ignore, so you maybe set it to 0.
 //
-// When other libraries use the default global flag.FlagSet, that's
-// flag.CommandLine, such as github.com/golang/glog, please use
-// NewDefaultFlagCliParser(), not this function.
-func NewFlagCliParser(appName string, errhandler flag.ErrorHandling,
-	underlineToHyphen bool, flagSet ...*flag.FlagSet) Parser {
-
-	if appName == "" {
-		appName = filepath.Base(os.Args[0])
-	}
-
-	var fset *flag.FlagSet
-	if len(flagSet) > 0 && flagSet[0] != nil {
-		fset = flagSet[0]
+// Notice: when other libraries use the default global flag.FlagSet, that's
+// flag.CommandLine, such as github.com/golang/glog, please use flag.CommandLine
+// as flag.FlagSet.
+func NewFlagCliParser(flagSet *flag.FlagSet, underlineToHyphen bool) Parser {
+	if flagSet == nil {
+		flagSet = flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ContinueOnError)
 	}
 
 	return flagParser{
-		name:       appName,
-		flagSet:    fset,
-		errhandler: errhandler,
-
-		underlineToHyphen: underlineToHyphen,
+		fset: flagSet,
+		utoh: underlineToHyphen,
 	}
 }
 
@@ -121,23 +114,23 @@ func (f flagParser) Name() string {
 	return "flag"
 }
 
-func (f flagParser) Parse(c *Config) (err error) {
-	// Register the options into flag.FlagSet.
-	flagSet := f.flagSet
-	if flagSet == nil {
-		flagSet = flag.NewFlagSet(f.name, f.errhandler)
-	}
+func (f flagParser) Init(c *Config) error {
+	return nil
+}
 
+func (f flagParser) Parse(c *Config) (err error) {
 	// Convert the option name.
 	name2group := make(map[string]string, 8)
 	name2opt := make(map[string]string, 8)
-	for gname, group := range c.Groups() {
-		for name, opt := range group.CliOpts() {
+	for _, group := range c.Groups() {
+		gname := group.FullName()
+		for _, opt := range group.CliOpts() {
+			name := opt.Name()
 			if gname != c.GetDefaultGroupName() {
-				name = fmt.Sprintf("%s_%s", gname, name)
+				name = fmt.Sprintf("%s%s%s", gname, c.GetGroupSeparator(), name)
 			}
 
-			if f.underlineToHyphen {
+			if f.utoh {
 				name = strings.Replace(name, "_", "-", -1)
 			}
 
@@ -149,13 +142,13 @@ func (f flagParser) Parse(c *Config) (err error) {
 				if v := opt.Default(); v != nil {
 					_default = v.(bool)
 				}
-				flagSet.Bool(name, _default, opt.Help())
+				f.fset.Bool(name, _default, opt.Help())
 			} else {
 				_default := ""
 				if opt.Default() != nil {
 					_default = fmt.Sprintf("%v", opt.Default())
 				}
-				flagSet.String(name, _default, opt.Help())
+				f.fset.String(name, _default, opt.Help())
 			}
 		}
 	}
@@ -164,11 +157,11 @@ func (f flagParser) Parse(c *Config) (err error) {
 	var _version *bool
 	name, version, help := c.GetVersion()
 	if name != "" {
-		_version = flagSet.Bool(name, false, help)
+		_version = f.fset.Bool(name, false, help)
 	}
 
 	// Parse the CLI arguments.
-	if err = flagSet.Parse(c.CliArgs()); err != nil {
+	if err = f.fset.Parse(c.CliArgs()); err != nil {
 		return
 	}
 
@@ -178,8 +171,8 @@ func (f flagParser) Parse(c *Config) (err error) {
 	}
 
 	// Acquire the result.
-	c.SetArgs(flagSet.Args())
-	flagSet.Visit(func(fg *flag.Flag) {
+	c.SetArgs(f.fset.Args())
+	f.fset.Visit(func(fg *flag.Flag) {
 		gname := name2group[fg.Name]
 		optname := name2opt[fg.Name]
 		if gname != "" && optname != "" && fg.Name != name {
@@ -193,17 +186,28 @@ func (f flagParser) Parse(c *Config) (err error) {
 type iniParser struct {
 	sep     string
 	optName string
+	init    func(*Config) error
 	fmtKey  func(string) string
 }
 
-// NewSimpleIniParser returns a new ini parser based on the file.
+// NewSimpleIniParser is equal to
+func NewSimpleIniParser(optName string) Parser {
+	return NewIniParser(optName, func(c *Config) error {
+		c.RegisterCliOpt("", Str(optName, "", "The path of the INI config file."))
+		return nil
+	})
+}
+
+// NewIniParser returns a new ini parser based on the file.
 //
-// The argument is the option name which the parser needs. It should be
+// The first argument is the option name which the parser needs. It will be
 // registered, and parsed before this parser runs.
+//
+// The second argument sets the Init function.
 //
 // The ini parser supports the line comments starting with "#", "//" or ";".
 // The key and the value is separated by an equal sign, that's =. The key must
-// be in one of _, -, number and letter. If giving fmtKey, it can convert
+// be in one of ., :, _, -, number and letter. If giving fmtKey, it can convert
 // the key in the ini file to the new one.
 //
 // If the value ends with "\", it will continue the next line. The lines will
@@ -211,21 +215,26 @@ type iniParser struct {
 //
 // Notice: the options that have not been assigned to a certain group will be
 // divided into the default group.
-func NewSimpleIniParser(optName string, fmtKey ...func(string) string) Parser {
+func NewIniParser(optName string, init func(*Config) error,
+	fmtKey ...func(string) string) Parser {
 	f := func(key string) string { return key }
 	if len(fmtKey) > 0 && fmtKey[0] != nil {
 		f = fmtKey[0]
 	}
-	return iniParser{optName: optName, sep: "=", fmtKey: f}
+	return iniParser{optName: optName, sep: "=", init: init, fmtKey: f}
 }
 
 func (p iniParser) Name() string {
 	return "ini"
 }
 
-// func (p iniParser) Parse(_default string, opts map[string][]Opt,
-// 	conf map[string]interface{}) (results map[string]map[string]interface{},
-// 	err error) {
+func (p iniParser) Init(c *Config) error {
+	if p.init != nil {
+		return p.init(c)
+	}
+	return nil
+}
+
 func (p iniParser) Parse(c *Config) error {
 	// Read the content of the config file.
 	filename := c.Group("").StringD(p.optName, "")
@@ -235,20 +244,6 @@ func (p iniParser) Parse(c *Config) error {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
-	}
-
-	// Convert the format of the optons.
-	options := make(map[string]map[string]struct{}, len(c.Groups()))
-	for gname, group := range c.Groups() {
-		opts := group.AllOpts()
-		g, ok := options[gname]
-		if !ok {
-			g = make(map[string]struct{}, len(opts))
-			options[gname] = g
-		}
-		for _, opt := range opts {
-			g[opt.Name()] = struct{}{}
-		}
 	}
 
 	// Parse the config file.
@@ -338,9 +333,10 @@ func (e envVarParser) Name() string {
 	return "env"
 }
 
-// func (e envVarParser) Parse(_default string, opts map[string][]Opt,
-// 	conf map[string]interface{}) (results map[string]map[string]interface{},
-// 	err error) {
+func (e envVarParser) Init(c *Config) error {
+	return nil
+}
+
 func (e envVarParser) Parse(c *Config) error {
 	// Initialize the prefix
 	prefix := e.prefix
@@ -350,14 +346,14 @@ func (e envVarParser) Parse(c *Config) error {
 
 	// Convert the option to the variable name
 	env2opts := make(map[string][]string, len(c.Groups())*8)
-	for gname, group := range c.Groups() {
-		_gname := ""
-		if gname != c.GetDefaultGroupName() {
-			_gname = gname + "_"
+	for _, group := range c.Groups() {
+		gname := ""
+		if group.Name() != c.GetDefaultGroupName() {
+			gname = strings.ReplaceAll(group.FullName(), c.GetGroupSeparator(), "_") + "_"
 		}
-		for name := range group.AllOpts() {
-			e := fmt.Sprintf("%s%s%s", prefix, _gname, name)
-			env2opts[strings.ToUpper(e)] = []string{gname, name}
+		for _, opt := range group.AllOpts() {
+			e := fmt.Sprintf("%s%s%s", prefix, gname, opt.Name())
+			env2opts[strings.ToUpper(e)] = []string{group.Name(), opt.Name()}
 		}
 	}
 
