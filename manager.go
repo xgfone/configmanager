@@ -620,11 +620,10 @@ func (c *Config) AllGroups() []*OptGroup {
 }
 
 func (c *Config) mergeGroupName(parent, name string) string {
-	parent = strings.TrimPrefix(parent, c.groupPrefix)
 	if parent == "" {
 		return name
 	}
-	return parent + "." + name
+	return strings.TrimPrefix(parent+"."+name, c.groupPrefix)
 }
 
 func (c *Config) getGroupName(name string) string {
@@ -661,6 +660,12 @@ func (c *Config) getGroupByName(name string, new bool) *OptGroup {
 	}
 
 	return c.groups[name]
+}
+
+// NewGroup news and returns a group named group.
+func (c *Config) NewGroup(group string) *OptGroup {
+	c.panicIsParsed(true)
+	return c.getGroupByName(group, true)
 }
 
 // HasGroup reports whether there is the group named 'group'.

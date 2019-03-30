@@ -133,6 +133,11 @@ func (g *OptGroup) Group(name string) *OptGroup {
 	return g.conf.Group(g.conf.mergeGroupName(g.name, name))
 }
 
+// NewGroup news and returns a sub-group named group.
+func (g *OptGroup) NewGroup(name string) *OptGroup {
+	return g.NewGroup(g.conf.mergeGroupName(g.name, name))
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Set the option value.
 
