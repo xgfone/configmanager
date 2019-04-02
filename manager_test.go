@@ -31,7 +31,7 @@ func ExampleConfig_Observe() {
 	conf.Parse() // Start the config
 
 	// Set the option vlaue during the program is running.
-	conf.SetOptValue("test", "watchval", "123")
+	conf.SetOptValue(0, "test", "watchval", "123")
 
 	// Output:
 	// group=test, name=watchval, value=abc
@@ -79,7 +79,7 @@ func ExampleConfig() {
 		StrOpt("", "opt", "", "test opt"),
 	}
 
-	conf := NewConfig().SetCliParser(NewFlagCliParser(nil, true))
+	conf := NewConfig().AddParser(NewFlagCliParser(nil, true))
 	conf.RegisterCliOpts("", cliOpts1)
 	conf.RegisterCliOpts("cli", cliOpts2)
 	conf.RegisterCliOpts("group1.group2", opts)

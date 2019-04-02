@@ -21,9 +21,9 @@ The supported Go version: `1.x`.
 2. (Optional) Set the CLI parser or add non-CLI parsers into the `Config`.
 3. Register the configuration options into `Config`.
 3. Call the method `Parse()` to parse the configurations.
-    1. Initialize the CLI parser and the other common parsers if they exist.
-    2. Call the CLI parser to parse the CLI arguments.
-    3. Call other parsers in turn according to the order that they are registered.
+    1. Call the method `Pre()` of the parsers in turn to initialize them.
+    2. Call the method `Parse()` of the parsers in turn to parse the options.
+    3. Call the method `Post()` of the parsers in turn to clean them.
     4. Assign the default value to the unresolved option if it has a default.
     5. Check whether some required options have not been unresolved.
 
@@ -32,16 +32,20 @@ The supported Go version: `1.x`.
 
 ## Parser
 
-In order to deveplop a new parser, you just need to implement the interface `Parser`. But `Config` distinguishes the CLI parser and the common parser, which have the same interface `Parser`. But `Config` must have no more than one CLI parser set by `SetCliParser()` and maybe have many common parsers added by `AddParser()`. See the example below.
+In order to deveplop a new parser, you just need to implement the interface `Parser`. But `Config` does not distinguish the CLI parser and the common parser, which have the same interface `Parser`. You can add them by calling `AddParser()`. See the example below.
+
+**Notice:** the priority of the CLI parser should be higher than that of other parsers.
 
 
 ## Read and Modify the value from `Config`
 
 It's thread-safe for the application to read the configuration value from the `Config`, but you must not modify it.
 
-If you want to the value of a certain configuration, you should call the method `SetOptValue(groupName, optName, newOptValue)`. For the default group, `groupName` may be `""`. If the setting fails, it will return an error. Moreover, `SetOptValue` is thread-safe. During the running, therefore, you can get and set the configuration value between goroutines dynamically.
+If you want to the value of a certain configuration, you should call the method `SetOptValue(priority int, groupName, optName, newOptValue)`. For the default group, `groupName` may be `""`. If the setting fails, it will return an error. Moreover, `SetOptValue` is thread-safe. During the running, therefore, you can get and set the configuration value between goroutines dynamically.
 
 For the modifiable type, such as slice or map, in order to modify them, you should clone them firstly, then modify the cloned value and call `SetOptValue` with the cloned one.
+
+For modify the value of the option, you can use the priority `0`, which is the highest priority and can be cover any other value.
 
 
 ## Observe the changed configuration
@@ -64,7 +68,7 @@ import (
 func main() {
 	cliParser := config.NewDefaultFlagCliParser(true)
 	iniParser := config.NewSimpleIniParser("config-file")
-	conf := config.NewConfig().SetCliParser(cliParser).AddParser(iniParser)
+	conf := config.NewConfig().AddParser(cliParser, iniParser)
 
 	ipOpt := config.StrOpt("", "ip", "", "the ip address").SetValidators(config.NewIPValidator())
 	conf.RegisterCliOpt("", ipOpt)
@@ -141,7 +145,7 @@ func main() {
 	conf.Parse()
 
 	// Set the option vlaue during the program is running.
-	conf.SetOptValue("test", "watchval", "123")
+	conf.SetOptValue(0, "test", "watchval", "123")
 
 	// Output:
 	// [Observer] group=test, name=watchval, value=abc

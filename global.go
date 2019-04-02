@@ -30,8 +30,5 @@ var Conf = NewDefault()
 func NewDefault() *Config {
 	cli := NewDefaultFlagCliParser(true)
 	ini := NewSimpleIniParser(IniParserOptName)
-	conf := NewConfig().SetCliParser(cli).AddParser(ini)
-	conf.AddIgnoredDeferOption("", IniParserOptName)
-
-	return conf
+	return NewConfig().AddParser(cli, ini)
 }

@@ -31,9 +31,18 @@ type Parser interface {
 	// Name returns the name of the parser to identify it.
 	Name() string
 
-	// Init initializes the parser before parsing the configuration,
-	// such as registering the itself options.
-	Init(config *Config) error
+	// Priority reports the priority of the current parser, which should be
+	// a natural number.
+	//
+	// The smaller the number, the higher the priority. And the higher priority
+	// parser can cover the option value set by the lower priority parser.
+	//
+	// For the cli parser, it maybe return 0 to indicate the highest priority.
+	Priority() int
+
+	// Pre is called before parsing the configuration, so it may be used to
+	// initialize the parser, such as registering the itself options.
+	Pre(*Config) error
 
 	// Parse the value of the registered options.
 	//
@@ -58,12 +67,16 @@ type Parser interface {
 	// manager will convert the value to the specific type automatically.
 	// Certainly, it's not harmless for the parser to convert the value to
 	// the specific type.
-	Parse(config *Config) error
+	Parse(*Config) error
+
+	// Pre is called before parsing the configuration, so it may be used to
+	// clean the parser.
+	Post(*Config) error
 }
 
 type flagParser struct {
-	fset *flag.FlagSet
 	utoh bool
+	fset *flag.FlagSet
 }
 
 // NewDefaultFlagCliParser returns a new CLI parser based on flag,
@@ -102,7 +115,15 @@ func (f flagParser) Name() string {
 	return "flag"
 }
 
-func (f flagParser) Init(c *Config) error {
+func (f flagParser) Priority() int {
+	return 0
+}
+
+func (f flagParser) Pre(c *Config) error {
+	return nil
+}
+
+func (f flagParser) Post(c *Config) error {
 	return nil
 }
 
@@ -165,7 +186,7 @@ func (f flagParser) Parse(c *Config) (err error) {
 		gname := name2group[fg.Name]
 		optname := name2opt[fg.Name]
 		if gname != "" && optname != "" && fg.Name != name {
-			c.DeferSetOptValue(gname, optname, fg.Value.String())
+			c.SetOptValue(0, gname, optname, fg.Value.String())
 		}
 	})
 
@@ -173,21 +194,16 @@ func (f flagParser) Parse(c *Config) (err error) {
 }
 
 type iniParser struct {
-	sep     string
-	optName string
-	init    func(*Config) error
-	fmtKey  func(string) string
+	sep  string
+	opt  string
+	prio int
+	init func(*Config) error
 }
 
-// NewSimpleIniParser is equal to
-//
-//   NewIniParser(optName, func(c *Config) error {
-//       c.RegisterCliOpt("", Str(optName, "", "The path of the INI config file."))
-//       return nil
-//   })
-//
+// NewSimpleIniParser returns a INI parser with the priority 100, which registers
+// the option, optName, before parsing the option.
 func NewSimpleIniParser(optName string) Parser {
-	return NewIniParser(optName, func(c *Config) error {
+	return NewIniParser(100, optName, func(c *Config) error {
 		c.RegisterCliOpt("", Str(optName, "", "The path of the INI config file."))
 		return nil
 	})
@@ -195,10 +211,12 @@ func NewSimpleIniParser(optName string) Parser {
 
 // NewIniParser returns a new ini parser based on the file.
 //
-// The first argument is the option name which the parser needs. It will be
+// The first argument is used to customized the priority.
+//
+// The second argument is the option name which the parser needs. It will be
 // registered, and parsed before this parser runs.
 //
-// The second argument sets the Init function.
+// The third argument sets the Init function.
 //
 // The ini parser supports the line comments starting with "#", "//" or ";".
 // The key and the value is separated by an equal sign, that's =. The key must
@@ -210,29 +228,32 @@ func NewSimpleIniParser(optName string) Parser {
 //
 // Notice: the options that have not been assigned to a certain group will be
 // divided into the default group.
-func NewIniParser(optName string, init func(*Config) error,
-	fmtKey ...func(string) string) Parser {
-	f := func(key string) string { return key }
-	if len(fmtKey) > 0 && fmtKey[0] != nil {
-		f = fmtKey[0]
-	}
-	return iniParser{optName: optName, sep: "=", init: init, fmtKey: f}
+func NewIniParser(priority int, optName string, init func(*Config) error) Parser {
+	return iniParser{prio: priority, opt: optName, sep: "=", init: init}
 }
 
 func (p iniParser) Name() string {
 	return "ini"
 }
 
-func (p iniParser) Init(c *Config) error {
+func (p iniParser) Priority() int {
+	return p.prio
+}
+
+func (p iniParser) Pre(c *Config) error {
 	if p.init != nil {
 		return p.init(c)
 	}
 	return nil
 }
 
+func (p iniParser) Post(c *Config) error {
+	return nil
+}
+
 func (p iniParser) Parse(c *Config) error {
 	// Read the content of the config file.
-	filename := c.StringD(p.optName, "")
+	filename := c.StringD(p.opt, "")
 	if filename == "" {
 		return nil
 	}
@@ -298,13 +319,7 @@ func (p iniParser) Parse(c *Config) error {
 			value = strings.TrimSpace(strings.Join(vs, "\n"))
 		}
 
-		if newkey := p.fmtKey(key); newkey != "" {
-			key = newkey
-		} else {
-			panic(fmt.Errorf("convert the key '%s' to ''", key))
-		}
-
-		if err = c.SetOptValue(gname, key, value); err != nil {
+		if err = c.SetOptValue(p.prio, gname, key, value); err != nil {
 			return err
 		}
 	}
@@ -333,7 +348,15 @@ func (e envVarParser) Name() string {
 	return "env"
 }
 
-func (e envVarParser) Init(c *Config) error {
+func (e envVarParser) Priority() int {
+	return 10
+}
+
+func (e envVarParser) Pre(c *Config) error {
+	return nil
+}
+
+func (e envVarParser) Post(c *Config) error {
 	return nil
 }
 
@@ -360,11 +383,11 @@ func (e envVarParser) Parse(c *Config) (err error) {
 	// Get the option value from the environment variable.
 	envs := os.Environ()
 	for _, env := range envs {
-		c.Printf("[%s] Parsing Env '%s'", env)
+		c.Printf("[%s] Parsing Env '%s'", e.Name(), env)
 		items := strings.SplitN(env, "=", 2)
 		if len(items) == 2 {
 			if info, ok := env2opts[items[0]]; ok {
-				if err = c.SetOptValue(info[0], info[1], items[1]); err != nil {
+				if err = c.SetOptValue(10, info[0], info[1], items[1]); err != nil {
 					return err
 				}
 			}
@@ -375,20 +398,16 @@ func (e envVarParser) Parse(c *Config) (err error) {
 }
 
 type propertyParser struct {
-	sep     string
-	optName string
-	init    func(*Config) error
+	sep  string
+	opt  string
+	prio int
+	init func(*Config) error
 }
 
-// NewSimplePropertyParser is equal to
-//
-//   NewIniParser(optName, func(c *Config) error {
-//       c.RegisterCliOpt("", Str(optName, "", "The path of the property config file."))
-//       return nil
-//   })
-//
+// NewSimplePropertyParser returns a INI parser with the priority 100,
+// which registers the option, optName, before parsing the option.
 func NewSimplePropertyParser(optName string) Parser {
-	return NewPropertyParser(optName, func(c *Config) error {
+	return NewPropertyParser(100, optName, func(c *Config) error {
 		c.RegisterCliOpt("", Str(optName, "", "The path of the property config file."))
 		return nil
 	})
@@ -396,10 +415,12 @@ func NewSimplePropertyParser(optName string) Parser {
 
 // NewPropertyParser returns a new property parser based on the file.
 //
-// The first argument is the option name which the parser needs. It will be
+// The first argument is used to customized the priority.
+//
+// The second argument is the option name which the parser needs. It will be
 // registered, and parsed before this parser runs.
 //
-// The second argument sets the Init function.
+// The third argument sets the Init function.
 //
 // The ini parser supports the line comments starting with "#", "//" or ";".
 // The key and the value is separated by an equal sign, that's =. The key must
@@ -411,24 +432,32 @@ func NewSimplePropertyParser(optName string) Parser {
 //
 // Notice: the options that have not been assigned to a certain group will be
 // divided into the default group.
-func NewPropertyParser(optName string, init func(*Config) error) Parser {
-	return propertyParser{optName: optName, sep: "=", init: init}
+func NewPropertyParser(priority int, optName string, init func(*Config) error) Parser {
+	return propertyParser{prio: priority, opt: optName, sep: "=", init: init}
 }
 
 func (p propertyParser) Name() string {
 	return "property"
 }
 
-func (p propertyParser) Init(c *Config) error {
+func (p propertyParser) Priority() int {
+	return p.prio
+}
+
+func (p propertyParser) Pre(c *Config) error {
 	if p.init != nil {
 		return p.init(c)
 	}
 	return nil
 }
 
+func (p propertyParser) Post(c *Config) error {
+	return nil
+}
+
 func (p propertyParser) Parse(c *Config) error {
 	// Read the content of the config file.
-	filename := c.StringD(p.optName, "")
+	filename := c.StringD(p.opt, "")
 	if filename == "" {
 		return nil
 	}
@@ -474,9 +503,9 @@ func (p propertyParser) Parse(c *Config) error {
 		ss = strings.Split(key, c.GetGroupSeparator())
 		switch _len := len(ss) - 1; _len {
 		case 0:
-			err = c.SetOptValue("", key, value)
+			err = c.SetOptValue(p.prio, "", key, value)
 		default:
-			err = c.SetOptValue(strings.Join(ss[:_len], c.GetGroupSeparator()), ss[_len], value)
+			err = c.SetOptValue(p.prio, strings.Join(ss[:_len], c.GetGroupSeparator()), ss[_len], value)
 		}
 
 		if err != nil {

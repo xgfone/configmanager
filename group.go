@@ -29,6 +29,7 @@ const DefaultGroupName = "DEFAULT"
 
 type option struct {
 	opt   Opt
+	prio  int
 	isCli bool
 }
 
@@ -39,11 +40,9 @@ type OptGroup struct {
 
 	fname  string
 	name   string
-	opts   map[string]option
+	opts   map[string]*option
 	values map[string]interface{}
 	fields map[string]reflect.Value
-	defers [][2]interface{}
-	ignore []string
 }
 
 // NewOptGroup returns a new OptGroup.
@@ -62,11 +61,9 @@ func newOptGroup(name, fullName string, conf *Config) *OptGroup {
 		fname: fullName,
 		lock:  sync.RWMutex{},
 
-		opts:   make(map[string]option, 8),
+		opts:   make(map[string]*option, 8),
 		values: make(map[string]interface{}, 8),
 		fields: make(map[string]reflect.Value),
-		defers: make([][2]interface{}, 0, 16),
-		ignore: make([]string, 0, 4),
 	}
 }
 
@@ -81,6 +78,21 @@ func (g *OptGroup) Name() string {
 // FullName returns the full name of the current group.
 func (g *OptGroup) FullName() string {
 	return g.fname
+}
+
+// Priority returns the priority of the option named name.
+//
+// Return -1 if the option does not exist.
+func (g *OptGroup) Priority(name string) int {
+	priority := -1
+
+	g.lock.RLock()
+	if opt := g.opts[name]; opt != nil {
+		priority = opt.prio
+	}
+	g.lock.RUnlock()
+
+	return priority
 }
 
 // AllOpts returns all the registered options, including the CLI options.
@@ -178,10 +190,18 @@ func (g *OptGroup) parseOptValue(name string, value interface{}) (interface{}, e
 	return value, nil
 }
 
-func (g *OptGroup) _setOptValue(name string, value interface{}) {
+func (g *OptGroup) _setOptValue(priority int, name string, value interface{}) (ok bool) {
 	func() {
 		g.lock.Lock()
 		defer g.lock.Unlock()
+
+		opt := g.opts[name]
+		if priority > opt.prio {
+			g.conf.debug("Ignore the option [%s]:[%s]: %d > %d", g.name, name, priority, opt.prio)
+			return
+		}
+		opt.prio = priority
+		ok = true
 
 		g.values[name] = value
 		if field, ok := g.fields[name]; ok {
@@ -189,69 +209,21 @@ func (g *OptGroup) _setOptValue(name string, value interface{}) {
 		}
 	}()
 
-	g.conf.debug("Set [%s]:[%s] to [%v]", g.name, name, value)
-	if g.conf.watch != nil {
-		g.conf.watch(g.name, name, value)
-	}
-}
-
-func (g *OptGroup) setOptValue(name string, value interface{}) (err error) {
-	if value, err = g.parseOptValue(name, value); err == nil {
-		g._setOptValue(name, value)
-	}
-	return
-}
-
-func (g *OptGroup) _deferSetOptValue() {
-	var cache [][2]interface{}
-
-	func() {
-		g.lock.Lock()
-		defer g.lock.Unlock()
-
-		_len := len(g.defers)
-		cache = make([][2]interface{}, _len)
-		for i := _len - 1; i >= 0; i-- {
-			v := g.defers[i]
-			cache[_len-i-1] = v
-
-			name, value := v[0].(string), v[1]
-			g.values[name] = value
-			if field, ok := g.fields[name]; ok {
-				field.Set(reflect.ValueOf(value))
-			}
-		}
-
-		// Clear
-		g.defers = g.defers[:0]
-	}()
-
-	for _, v := range cache {
-		name, value := v[0].(string), v[1]
-		g.conf.debug("Defer to set [%s]:[%s] to [%v]", g.name, name, value)
+	if ok {
+		g.conf.debug("Set [%s]:[%s] to [%v]", g.name, name, value)
 		if g.conf.watch != nil {
 			g.conf.watch(g.name, name, value)
 		}
 	}
-}
 
-func (g *OptGroup) deferSetOptValue(name string, value interface{}) (err error) {
-	for _, s := range g.ignore {
-		if s == name {
-			return g.setOptValue(name, value)
-		}
-	}
-
-	if value, err = g.parseOptValue(name, value); err == nil && !IsZero(value) {
-		g.lock.Lock()
-		g.defers = append(g.defers, [2]interface{}{name, value})
-		g.lock.Unlock()
-	}
 	return
 }
 
-func (g *OptGroup) addIgnoredDeferOption(name string) {
-	g.ignore = append(g.ignore, name)
+func (g *OptGroup) setOptValue(priority int, name string, value interface{}) (err error) {
+	if value, err = g.parseOptValue(name, value); err == nil {
+		g._setOptValue(priority, name, value)
+	}
+	return
 }
 
 // Check whether the required option has no value or a ZORE value.
@@ -259,7 +231,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 	for name, opt := range g.opts {
 		if _, ok := g.values[name]; !ok {
 			if v := opt.opt.Default(); v != nil {
-				if err = g.setOptValue(name, v); err != nil {
+				if err = g.setOptValue(1000, name, v); err != nil {
 					return
 				}
 				continue
@@ -267,7 +239,7 @@ func (g *OptGroup) checkRequiredOption() (err error) {
 
 			if g.conf.isZero {
 				if v := opt.opt.Zero(); v != nil {
-					if err = g.setOptValue(name, opt.opt.Zero()); err != nil {
+					if err = g.setOptValue(1000, name, opt.opt.Zero()); err != nil {
 						return
 					}
 					continue
@@ -412,7 +384,7 @@ func (g *OptGroup) registerOpt(cli bool, opt Opt) {
 		g.conf.debug("WARNING: Ingore to reregister group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 		return
 	}
-	g.opts[opt.Name()] = option{isCli: cli, opt: opt}
+	g.opts[opt.Name()] = &option{isCli: cli, opt: opt, prio: 1 << 31}
 	g.conf.debug("Register group=%s, name=%s, cli=%t", g.name, opt.Name(), cli)
 }
 

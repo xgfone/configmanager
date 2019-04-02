@@ -25,6 +25,7 @@ limitations under the License.
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"sort"
@@ -58,10 +59,9 @@ type Config struct {
 	vHelp    string
 	vVersion string
 
-	cparser Parser
-	parsers []Parser
-	cliArgs []string
 	args    []string
+	cliArgs []string
+	parsers []Parser
 
 	groupSep    string
 	groupName   string // Default Group Name
@@ -214,43 +214,22 @@ func (c *Config) Parsed() bool {
 // If parsed, it will panic when calling it.
 func (c *Config) Parse(args ...string) (err error) {
 	c.panicIsParsed(true)
+	c.getGroupByName(c.groupName, true) // Ensure that the default group exists.
 
-	// Ensure that the default group exists.
-	c.getGroupByName(c.groupName, true)
-
-	// Parse the CLI arguments
-	if c.cparser != nil {
-		if args == nil {
-			c.cliArgs = os.Args[1:]
-		} else {
-			c.cliArgs = args
-		}
-		c.debug("Initializing CLI parser '%s'", c.cparser.Name())
-		if err = c.cparser.Init(c); err != nil {
-			return err
-		}
+	if args == nil {
+		c.cliArgs = os.Args[1:]
 	} else {
-		c.debug("Warning: no CLI parser")
+		c.cliArgs = args
 	}
 
 	for _, parser := range c.parsers {
 		c.debug("Initializing the parser '%s'", parser.Name())
-		if err = parser.Init(c); err != nil {
+		if err = parser.Pre(c); err != nil {
 			return err
 		}
 	}
 
 	c.parsed = true
-
-	// Parse the CLI arguments.
-	if c.cparser != nil {
-		c.debug("Calling CLI parser '%s'", c.cparser.Name())
-		if err = c.cparser.Parse(c); err != nil {
-			return fmt.Errorf("The CLI parser failed: %s", err)
-		}
-	}
-
-	// Parse the other options by other parsers.
 	for _, parser := range c.parsers {
 		c.debug("Calling the parser '%s'", parser.Name())
 		if err = parser.Parse(c); err != nil {
@@ -258,9 +237,15 @@ func (c *Config) Parse(args ...string) (err error) {
 		}
 	}
 
+	for _, parser := range c.parsers {
+		c.debug("Cleaning the parser '%s'", parser.Name())
+		if err = parser.Post(c); err != nil {
+			return err
+		}
+	}
+
 	// Check whether all the groups have parsed all the required options.
 	for _, group := range c.groups {
-		group._deferSetOptValue()
 		if err = group.checkRequiredOption(); err != nil {
 			return err
 		}
@@ -287,6 +272,8 @@ func (c *Config) Parse(args ...string) (err error) {
 //     SetVersion(version)             // SetVersion("1.0.0")
 //     SetVersion(version, name)       // SetVersion("1.0.0", "version")
 //     SetVersion(version, name, help) // SetVersion("1.0.0", "version", "Print the version")
+//
+// Notice: it is for the CLI parser.
 func (c *Config) SetVersion(version string, args ...string) *Config {
 	name := "version"
 	help := "Print the version and exit."
@@ -308,13 +295,13 @@ func (c *Config) SetVersion(version string, args ...string) *Config {
 }
 
 // GetVersion returns the information about version.
+//
+// Notice: it is for the CLI parser.
 func (c *Config) GetVersion() (name, version, help string) {
 	return c.vName, c.vVersion, c.vHelp
 }
 
 // CliArgs returns the parsed cil argments.
-//
-// If no cli parser, it will return nil.
 func (c *Config) CliArgs() []string {
 	return c.cliArgs
 }
@@ -337,35 +324,28 @@ func (c *Config) SetArgs(args []string) {
 	c.args = args
 }
 
-// SetCliParser resets the CLI parser.
-//
-// If nil, it will disable the CLI parser. Also, it must be called
-// before calling c.Parse().
-func (c *Config) SetCliParser(cli Parser) *Config {
-	c.panicIsParsed(true)
-	c.cparser = cli
-	return c
+func (c *Config) sortParsers() {
+	sort.SliceStable(c.parsers, func(i, j int) bool {
+		return c.parsers[i].Priority() < c.parsers[j].Priority()
+	})
 }
 
-// AddParser adds a named parser.
-//
-// You can add many parsers, which are sequential, that's, the arguments needed
-// by the next parser can be acquired from the results parsed by the previous
-// parser.
-//
-// Notice: The parser having the same name has only been registered once.
-// Or it will panic. And it will also panic when calling it if parsed.
-func (c *Config) AddParser(parser Parser) *Config {
+// AddParser adds a few parsers.
+func (c *Config) AddParser(parsers ...Parser) *Config {
 	c.panicIsParsed(true)
+	c.parsers = append(c.parsers, parsers...)
+	c.sortParsers()
 
-	name := parser.Name()
-	for _, p := range c.parsers {
-		if p.Name() == name {
-			panic(fmt.Errorf("the parser '%s' has been added", name))
+	buf := bytes.NewBufferString("After adding the parser: [")
+	for i, p := range c.parsers {
+		if i > 0 {
+			fmt.Fprintf(buf, ", %s(%d)", p.Name(), p.Priority())
+		} else {
+			fmt.Fprintf(buf, "%s(%d)", p.Name(), p.Priority())
 		}
 	}
-
-	c.parsers = append(c.parsers, parser)
+	buf.WriteString("]")
+	c.debug(buf.String())
 	return c
 }
 
@@ -386,14 +366,21 @@ func (c *Config) RemoveParser(name string) Parser {
 	return nil
 }
 
-// HasParser reports whether the parser named name exists or not.
-func (c *Config) HasParser(name string) bool {
+// GetParser returns the parser named name.
+//
+// Return nil if the parser does not exist.
+func (c *Config) GetParser(name string) Parser {
 	for _, p := range c.parsers {
 		if p.Name() == name {
-			return true
+			return p
 		}
 	}
-	return false
+	return nil
+}
+
+// HasParser reports whether the parser named name exists.
+func (c *Config) HasParser(name string) bool {
+	return c.GetParser(name) != nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -531,35 +518,21 @@ func (c *Config) Observe(f func(groupName string, optName string, optValue inter
 
 // SetOptValue sets the value of the option in the group. It's thread-safe.
 //
+// priority it should be the priority of the parser. It only set the option value
+// successfully for the priority higher than the last. So you can use 0
+// to update it coercively.
+//
 // Notice: You cannot call SetOptValue() for the struct option, because we have
 // no way to promise that it's thread-safe.
-func (c *Config) SetOptValue(groupName, optName string, optValue interface{}) error {
+func (c *Config) SetOptValue(priority int, groupName, optName string, optValue interface{}) error {
+	if priority < 0 {
+		return fmt.Errorf("the priority must not be the negative")
+	}
+
 	if group := c.getGroupByName(groupName, false); group != nil {
-		return group.setOptValue(optName, optValue)
+		return group.setOptValue(priority, optName, optValue)
 	}
 	return fmt.Errorf("no group '%s'", groupName)
-}
-
-// DeferSetOptValue is the same as SetOptValue, but it will defer to
-// set the option value. For example, the CLI parser can call it to set
-// the option value after all the other parsers.
-//
-// Notice: it will ignore the ZERO value and shouldn't be called to set the option
-// dynamically when the program is running.
-func (c *Config) DeferSetOptValue(groupName, optName string, optValue interface{}) (err error) {
-	if group := c.getGroupByName(groupName, false); group != nil {
-		return group.deferSetOptValue(optName, optValue)
-	}
-	return fmt.Errorf("no group '%s'", groupName)
-}
-
-// AddIgnoredDeferOption adds the ignored defer option.
-//
-// It will be ignored when deferring to set its value,
-// and set its value instead immediately.
-func (c *Config) AddIgnoredDeferOption(groupName, optName string) {
-	c.panicIsParsed(true)
-	c.getGroupByName(groupName, true).addIgnoredDeferOption(optName)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
