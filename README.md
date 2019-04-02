@@ -3,7 +3,7 @@ An extensible go configuration. The default parsers can parse the CLI and ENV ar
 
 The inspiration is from [oslo.config](https://github.com/openstack/oslo.config), which is a `OpenStack` library for config.
 
-The current version is `v10`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
+The current version is `v11`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 The supported Go version: `1.x`.
 
