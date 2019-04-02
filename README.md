@@ -18,7 +18,7 @@ The supported Go version: `1.x`.
 ## Principle of Work
 
 1. New a `Config` engine.
-2. (Optional) Set the CLI parser or add non-CLI parsers into the `Config`.
+2. (Optional) Add CLI and non-CLI parsers into the `Config`.
 3. Register the configuration options into `Config`.
 3. Call the method `Parse()` to parse the configurations.
     1. Call the method `Pre()` of the parsers in turn to initialize them.
