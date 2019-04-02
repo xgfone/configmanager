@@ -34,7 +34,7 @@ The supported Go version: `1.x`.
 
 In order to deveplop a new parser, you just need to implement the interface `Parser`. But `Config` does not distinguish the CLI parser and the common parser, which have the same interface `Parser`. You can add them by calling `AddParser()`. See the example below.
 
-**Notice:** the priority of the CLI parser should be higher than that of other parsers.
+**Notice:** the priority of the CLI parser should be higher than that of other parsers, because the higher parser will be parsed preferentially. And the same priority parsers will be parsed in turn by the added order.
 
 
 ## Read and Modify the value from `Config`
