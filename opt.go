@@ -45,9 +45,6 @@ type Opt interface {
 	// For the slice, it should use the empty slice instead of nil.
 	Zero() interface{}
 
-	// IsBool returns true if the option is bool type. Or return false.
-	IsBool() bool
-
 	// Parse parses the argument to the type of this option.
 	// If failed to parse, it should return an error to explain the reason.
 	Parse(interface{}) (interface{}, error)
@@ -222,13 +219,6 @@ func (o baseOpt) Name() string {
 // GetShort returns the shorthand name of the option.
 func (o baseOpt) Short() string {
 	return o.short
-}
-
-func (o baseOpt) IsBool() bool {
-	if o._type == boolType {
-		return true
-	}
-	return false
 }
 
 // GetHelp returns the help doc of the option.

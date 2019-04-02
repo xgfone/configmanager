@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -146,16 +147,41 @@ func (f flagParser) Parse(c *Config) (err error) {
 			name2group[name] = gname
 			name2opt[name] = opt.Name()
 
-			if opt.IsBool() {
+			switch opt.Zero().(type) {
+			case bool:
 				var _default bool
 				if v := opt.Default(); v != nil {
 					_default = v.(bool)
 				}
 				f.fset.Bool(name, _default, opt.Help())
-			} else {
-				_default := ""
-				if opt.Default() != nil {
-					_default = fmt.Sprintf("%v", opt.Default())
+			case int, int8, int16, int32, int64:
+				var _default int64
+				if v := opt.Default(); v != nil {
+					_default, _ = ToInt64(v)
+				}
+				f.fset.Int64(name, _default, opt.Help())
+			case uint, uint8, uint16, uint32, uint64:
+				var _default uint64
+				if v := opt.Default(); v != nil {
+					_default, _ = ToUint64(v)
+				}
+				f.fset.Uint64(name, _default, opt.Help())
+			case float32, float64:
+				var _default float64
+				if v := opt.Default(); v != nil {
+					_default, _ = ToFloat64(v)
+				}
+				f.fset.Float64(name, _default, opt.Help())
+			case time.Duration:
+				var _default time.Duration
+				if v := opt.Default(); v != nil {
+					_default = v.(time.Duration)
+				}
+				f.fset.Duration(name, _default, opt.Help())
+			default:
+				var _default string
+				if v := opt.Default(); v != nil {
+					_default = fmt.Sprintf("%v", v)
 				}
 				f.fset.String(name, _default, opt.Help())
 			}
