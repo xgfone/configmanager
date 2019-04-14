@@ -7,7 +7,7 @@ The current version is `v11`. See [DOC](https://godoc.org/github.com/xgfone/go-c
 
 The supported Go version: `1.x`.
 
-**DEPRECATED: Please use the powerful [`gconf`](https://github.com/xgfone/gconf).**
+**DEPRECATED: Please use the more powerful [`gconf`](https://github.com/xgfone/gconf).**
 
 
 ## Goal
