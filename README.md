@@ -1,4 +1,4 @@
-# go-config [![Build Status](https://travis-ci.org/xgfone/go-config.svg?branch=master)](https://travis-ci.org/xgfone/go-config) [![GoDoc](https://godoc.org/github.com/xgfone/go-config?status.svg)](http://godoc.org/github.com/xgfone/go-config) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-config/master/LICENSE)
+# [DEPRECATED]go-config [![Build Status](https://travis-ci.org/xgfone/go-config.svg?branch=master)](https://travis-ci.org/xgfone/go-config) [![GoDoc](https://godoc.org/github.com/xgfone/go-config?status.svg)](http://godoc.org/github.com/xgfone/go-config) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-config/master/LICENSE)
 An extensible go configuration. The default parsers can parse the CLI and ENV arguments and the ini and property file. You can implement and register your parser, and the configuration engine will call the parser to parse the configuration.
 
 The inspiration is from [oslo.config](https://github.com/openstack/oslo.config), which is a `OpenStack` library for config.
@@ -6,6 +6,8 @@ The inspiration is from [oslo.config](https://github.com/openstack/oslo.config),
 The current version is `v11`. See [DOC](https://godoc.org/github.com/xgfone/go-config).
 
 The supported Go version: `1.x`.
+
+**DEPRECATED: Please use the powerful [`gconf`](https://github.com/xgfone/gconf).**
 
 
 ## Goal
